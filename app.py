@@ -680,15 +680,7 @@ def lookup_entry():
     email = request.form.get("email")
     name_query = f"{request.form.get('fname','').lower()} {request.form.get('lname','').lower()}".strip()
 
-    # Query both competitors and coaches by email (current competition)
-    competitors_raw = Competitor.query.filter(Competitor.email == email).all()
-    coaches_raw = Coach.query.filter(Coach.email == email).all()
-    current_entries = competitors_raw + coaches_raw
-
-    # Merge historical entries from S3, skipping names already in current competition
-    seen_names = {e.full_name.lower() for e in current_entries}
-    historical = [h for h in _load_historical_entries(email) if h.get("full_name", "").lower() not in seen_names]
-    entries = [e.to_dict() for e in current_entries] + historical
+    entries = _load_historical_entries(email)
 
     if len(entries) > 1 and name_query:
         entries = [e for e in entries if name_query in e.get("full_name", "").lower()]
