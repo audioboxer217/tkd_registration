@@ -520,7 +520,7 @@ def stripe_webhook():
 @api_bp.route("/entries", methods=["GET"])
 @api_bp.output(EntryListOut, description="All competitor and coach entries")
 def entries_api():
-    """Return all competitor and coach registrations as JSON.
+    """Return all competitor and coach entries as JSON.
 
     Query Parameters:
         status: Optional payment status filter (e.g. ``complete``, ``pending``,
@@ -544,14 +544,14 @@ def entries_api():
 @api_bp.output(EntryStatusOut, description="Entry and payment status")
 @api_bp.doc(responses={404: _err("Not found")})
 def get_entry_status(entry_id):
-    """Check registration and payment status by ID.
+    """Check entry and payment status by ID.
 
     Pass ``?type=coach`` to look up a coach record; omit or pass ``?type=competitor``
     for the default competitor lookup.  This disambiguates when both tables share
     the same integer primary key.
     """
     try:
-        reg_id = int(entry_id)
+        eid = int(entry_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Not found"}), 404
 
@@ -563,16 +563,16 @@ def get_entry_status(entry_id):
     # unambiguous.  When both tables share the same integer ID the caller should
     # pass `?type=` explicitly to guarantee the correct result.
     if reg_type_hint == "coach":
-        reg = db.session.get(Coach, reg_id)
+        reg = db.session.get(Coach, eid)
         reg_type = "coach"
         if reg is None:
-            reg = db.session.get(Competitor, reg_id)
+            reg = db.session.get(Competitor, eid)
             reg_type = "competitor"
     else:
-        reg = db.session.get(Competitor, reg_id)
+        reg = db.session.get(Competitor, eid)
         reg_type = "competitor"
         if reg is None:
-            reg = db.session.get(Coach, reg_id)
+            reg = db.session.get(Coach, eid)
             reg_type = "coach"
 
     if reg is None:
@@ -665,7 +665,7 @@ def admin_delete_entry(entry_id):
         return jsonify({"error": "Not found"}), 404
     db.session.delete(reg)
     db.session.commit()
-    return jsonify({"data": {"deleted": str(entry_id)}}), 200
+    return jsonify({"data": {"deleted": str(entry_id)}})
 
 
 @api_bp.route("/admin/upload/<string:resource>", methods=["POST"])

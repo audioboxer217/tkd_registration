@@ -285,7 +285,7 @@ def create_entry(body: dict) -> tuple:
 
     if entry_exists(body["full_name"], school.id, body["reg_type"]):
         db.session.rollback()
-        return None, f"Duplicate registration for {body['full_name']}", 409, None
+        return None, f"Duplicate entry for {body['full_name']}", 409, None
 
     if body["reg_type"] == "competitor":
         coach_name = (body.get("coach") or "").strip() or None
