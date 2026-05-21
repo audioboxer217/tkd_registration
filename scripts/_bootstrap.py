@@ -1,6 +1,5 @@
 """Shared path bootstrap for repository management scripts."""
 
-import os
 import sys
 from pathlib import Path
 

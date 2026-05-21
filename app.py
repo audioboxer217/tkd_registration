@@ -690,7 +690,6 @@ def lookup_entry():
 
 @ui_bp.route("/api/autofill", methods=["GET"])
 def autofill():
-    config = _current_app_config()
     import json as _json
 
     entry = _json.loads(request.args.get("entry"))
@@ -813,7 +812,6 @@ def api_validate_birthdate():
 
 @ui_bp.route("/api/validate/school", methods=["POST"])
 def api_validate_school():
-    config = _current_app_config()
     school_selection = request.form.get("school")
     school_valid = bool(school_selection)
     return render_template(
@@ -899,7 +897,6 @@ def upload_item(resource):
 @ui_bp.route("/schools", methods=["GET"])
 @login_required
 def schools_page():
-    config = _current_app_config()
     schools_list = _get_schools_list()
     if request.headers.get("HX-Request"):
         return render_template("api/schools.html", schools=schools_list, button_style=os.getenv("BUTTON_STYLE", "btn-primary"))

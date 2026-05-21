@@ -12,7 +12,7 @@
 - ✅ Added `School` model with relationships to Competitor and Coach
 - ✅ Added `Coach` model with school_id FK and to_dict() method
 - ✅ Added `Competitor` model with school_id FK, coach_id FK (nullable), and updated to_dict()
-- ✅ Updated `Registration` model with school_id column (marked as legacy/archive)
+- ✅ Removed `Registration` model (legacy ORM class deleted; `registrations` table kept in DB as archive)
 
 ### 3. API Endpoints (`api.py`)
 - ✅ Updated `/api/v1/entries` to query both `Competitor` and `Coach` tables
@@ -32,7 +32,8 @@
 - ✅ Updated `lookup_entry()`: Query both Competitor and Coach tables
 
 ### 5. Data Migration Script
-- ✅ Created `scripts/fuzzy_match_coaches.py` for fuzzy matching competitor coaches to coach records
+- ✅ Ran `scripts/fuzzy_match_coaches.py` to link competitor coach names to coach records (>85% confidence)
+- ✅ Deleted `scripts/fuzzy_match_coaches.py` (one-shot migration complete)
 
 ## Key Design Decisions
 
@@ -43,7 +44,7 @@
 
 ## Next Steps
 
-1. Run fuzzy_match_coaches.py to link competitors to coach records
+1. ✅ ~~Run fuzzy_match_coaches.py to link competitors to coach records~~
 2. Test registration flow (competitor + coach)
 3. Test admin pages (add, edit, view entries)
 4. Test export (CSV)
@@ -67,5 +68,5 @@
 ### competitors
 - id (PK), full_name, email, phone, school_id (FK), coach_id (FK, nullable), parent, birthdate, age, gender, weight, height, belt_rank, events, poomsae_form fields, medical fields, img_filename, tshirt, checkout_session_id, created_at, updated_at
 
-### registrations (legacy archive)
-- All original fields + school_id (FK)
+### registrations (archive — ORM class removed)
+- Table kept in database for historical reference; no ORM model in codebase

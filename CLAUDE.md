@@ -19,10 +19,10 @@ uv run ruff check .                # Lint (130 char line limit)
 ```
 app.py              UI routes (pages, HTMX, admin)
 api.py              REST API endpoints (/api/v1/*)
-models.py           SQLAlchemy ORM (School, Coach, Competitor, Registration)
+models.py           SQLAlchemy ORM (School, Coach, Competitor)
 templates/          Jinja2 + Bootstrap 5.3 + HTMX 2.0
 tests/              pytest suite (class-based, extensive mocking)
-scripts/            DB utilities, fuzzy matching, migrations
+scripts/            DB utilities, schedule generation, migrations
 envs/               Zappa deployment configs
 docs/               Reference documentation (see below)
 ```
@@ -34,7 +34,7 @@ docs/               Reference documentation (see below)
 **Three blueprints**:
 - **app.py**: UI routes with Supabase session auth (`@login_required`)
 - **api.py**: JSON endpoints at `/api/v1/*` with JWT auth (`@api_auth_required`)
-- **models.py**: `schools` (reference), `coaches`, `competitors`, `registrations` (legacy archive)
+- **models.py**: `schools` (reference), `coaches`, `competitors`
 
 **Frontend**: Jinja2 templates, Bootstrap 5.3, HTMX 2.0 for dynamic forms
 
@@ -42,7 +42,6 @@ docs/               Reference documentation (see below)
 
 - Always call `.to_dict()` on models before passing to templates/API
 - Use `_get_or_create_school(name)` helper before creating competitors/coaches (FK safety)
-- Query `Competitor` or `Coach` tables; **do not insert** to `registrations` (archive only)
 - Style: PEP 8 via ruff (130 char max), domain-specific names (`competitor` not `reg`), env vars only (no hardcoded secrets)
 - HTMX routes return HTML not JSON
 
@@ -91,11 +90,7 @@ Env vars stored in S3 JSON file (configured via `remote_env` in Zappa YAML).
 
 ## Key Context
 
-**Current Branch**: `migrate/update_db_models` — Database refactored, templates updated, ready for verification
-
-**Recent Changes** (Apr 2026): Separated monolithic `registrations` table into `schools`, `coaches`, `competitors` with proper normalization. All routes updated, templates cleaned up, fuzzy coach-matching in progress.
-
-**Next Steps**: Run `fuzzy_match_coaches.py`, verify admin workflows, test end-to-end, drop legacy `registrations` table.
+**Recent Changes** (Apr–May 2026): Separated monolithic `registrations` table into `schools`, `coaches`, `competitors`. All routes updated, templates cleaned up, coach matching complete. Legacy `Registration` ORM model removed; `registrations` table kept in DB as archive.
 
 ## External Resources
 

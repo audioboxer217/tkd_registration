@@ -2,7 +2,7 @@
 
 ## Overview
 
-The TKD Registration database uses three active tables (`schools`, `coaches`, `competitors`) plus a legacy `registrations` archive. This refactoring (Apr 2026) separated a monolithic registrations table into properly normalized, type-specific tables.
+The TKD Registration database uses three active tables: `schools`, `coaches`, and `competitors`. This refactoring (Apr 2026) separated a monolithic `registrations` table into properly normalized, type-specific tables. The `registrations` table remains in the database as a read-only archive but has no ORM model.
 
 ---
 
@@ -218,34 +218,6 @@ db.session.commit()
 
 # Serialize
 competitor.to_dict()
-```
-
----
-
-## Table: Registration (Legacy Archive)
-
-**Do not insert new rows.** This table is kept for backward compatibility during the migration from DynamoDB.
-
-All new code should query `Competitor` or `Coach` tables instead. Use `Registration` table only for:
-- Historical lookups of old registrations
-- CSV export of all registrations
-- Data validation/debugging during migration
-
-### Columns
-Same as `Competitor` but with flattened structure (no FK relationships):
-- `full_name`, `email`, `phone`, `school` (string, not FK)
-- `reg_type` (string: "competitor" or "coach")
-- All competitor-specific fields (nullable for coaches)
-
-### Example Usage
-```python
-from models import Registration
-
-# Historical lookup (read-only)
-old_registrations = Registration.query.all()
-
-# Do NOT do this:
-# reg = Registration(full_name="...", ...)  # ❌ Wrong! Add to Competitor or Coach instead
 ```
 
 ---

@@ -113,7 +113,7 @@ ruff.toml           # Ruff linter configuration (130 char line limit)
 ### Core Structure
 - **app.py** (UI Routes): Jinja2 templates, HTMX interactions, admin workflows. Protected routes use `@login_required` (Supabase JWT check).
 - **api.py** (API Routes): `/api/v1/*` endpoints return JSON. Protected by `@api_auth_required` (validates Supabase JWT in Authorization header, checks role == "admin").
-- **models.py** (SQLAlchemy ORM): Three active tables `schools`, `coaches`, `competitors` + legacy `registrations` archive.
+- **models.py** (SQLAlchemy ORM): Three active tables `schools`, `coaches`, `competitors`. The `registrations` table exists in the DB as an archive but has no ORM model.
 - **Templates**: Bootstrap 5.3.3 + HTMX 2.0.4 for dynamic forms. Master layout in `base.html`, form sections in `templates/form/`.
 
 ### Database Schema (Recent Refactoring)
@@ -129,10 +129,6 @@ ruff.toml           # Ruff linter configuration (130 char line limit)
 - `id`, `full_name`, `email`, `phone`, `school_id` (FK), `coach_id` (FK, nullable), parent info, age, gender, weight, height, belt rank
 - Events, poomsae forms (individual/WC/pair/team/family), medical info, t-shirt size, payment status
 - `.to_dict()` includes `reg_type: "competitor"`
-
-**Registration** (legacy archive):
-- **Do not insert new rows**. Used by CSV export and historical lookups. All new code queries `competitors` or `coaches` tables instead.
-- Kept for backward compatibility during migration phase.
 
 ### Key Patterns
 
@@ -161,11 +157,10 @@ ruff.toml           # Ruff linter configuration (130 char line limit)
 
 ## Known Gotchas & Migration Status
 
-### Recent Refactoring (Apr 2026)
-- **Completed**: Separated `registrations` table into `schools`, `competitors`, `coaches`.
+### Recent Refactoring (Apr–May 2026)
+- **Completed**: Separated `registrations` table into `schools`, `competitors`, `coaches`. `Registration` ORM model removed; `registrations` table kept as a read-only DB archive.
 - **Helper Functions**: Use `_get_or_create_school()` before creating competitors/coaches to ensure FK constraints are met.
-- **Fuzzy Matching**: Run `scripts/fuzzy_match_coaches.py` to link competitor coach names to coach records (>85% confidence threshold). Unmatched coaches logged for manual review.
-- **Legacy Data**: Old `registrations` table is an archive. CSV export queries only `competitors` table. Do not insert new rows into `registrations`.
+- **Coach Linking**: Coach matching complete. `scripts/fuzzy_match_coaches.py` was a one-shot migration script and has been deleted.
 - **Template Updates**: All templates updated to use native Python dict format (no DynamoDB `.S`/`.N` suffix wrappers).
 
 ### Common Issues
