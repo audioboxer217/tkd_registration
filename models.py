@@ -7,6 +7,10 @@ from sqlalchemy.types import JSON
 db = SQLAlchemy()
 
 
+class DuplicateEntryError(Exception):
+    """Raised when an entry already exists for the same name/school/type."""
+
+
 class School(db.Model):
     """Reference table for schools/clubs."""
     __tablename__ = "schools"
@@ -25,6 +29,28 @@ class School(db.Model):
             "name": self.name,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+    @classmethod
+    def get_or_create(cls, name: str) -> "tuple[School | None, bool]":
+        """Return (school, is_new). is_new is True when the school was just inserted.
+
+        Flushes (but does not commit) when a new school is created.
+        Returns (None, False) when name is empty/None.
+        """
+        if not name:
+            return None, False
+        school = cls.query.filter_by(name=name).first()
+        if school is not None:
+            return school, False
+        school = cls(name=name)
+        db.session.add(school)
+        db.session.flush()
+        return school, True
+
+    @classmethod
+    def all_names(cls) -> list:
+        """Return all school names sorted alphabetically."""
+        return [s.name for s in cls.query.order_by(cls.name).all()]
 
 
 class Coach(db.Model):
@@ -78,6 +104,13 @@ class Coach(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+    @classmethod
+    def find_by_name_and_school(cls, name: str, school_id: int) -> "Coach | None":
+        """Look up a coach by exact name and school_id. Returns None if not found."""
+        if not name or not school_id:
+            return None
+        return cls.query.filter_by(full_name=name, school_id=school_id).first()
 
 
 class Competitor(db.Model):
@@ -173,6 +206,129 @@ class Competitor(db.Model):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
+    @classmethod
+    def find_by_checkout_session(cls, session_id: str) -> "Competitor | None":
+        """Return the competitor whose Stripe checkout session matches session_id."""
+        return cls.query.filter_by(checkout_session_id=session_id).first()
+
+    @classmethod
+    def eligible(cls, status: "str | None" = "complete") -> list:
+        """Return competitors filtered by payment status.
+
+        Pass status=None to return all competitors regardless of status.
+        """
+        if status is None:
+            return cls.query.all()
+        return cls.query.filter_by(status=status).all()
+
+
+# ---------------------------------------------------------------------------
+# Module-level helpers
+# ---------------------------------------------------------------------------
+
+
+def age_group_for(age) -> str:
+    """Map an integer age to its competition age-group name."""
+    age_groups = {
+        "too_young": list(range(0, 4)),
+        "dragon": [4, 5, 6, 7],
+        "tiger": [8, 9],
+        "youth": [10, 11],
+        "cadet": [12, 13, 14],
+        "junior": [15, 16],
+        "senior": list(range(17, 33)),
+        "ultra": list(range(33, 100)),
+    }
+    return next((group for group, ages in age_groups.items() if int(age) in ages), "too_old")
+
+
+def entry_exists(full_name: str, school_id: int, reg_type: str) -> bool:
+    """Return True when a competitor or coach with this name/school already exists."""
+    model = Competitor if reg_type == "competitor" else Coach
+    return model.query.filter_by(full_name=full_name, school_id=school_id).first() is not None
+
+
+def find_entry_by_id(entry_id) -> "Competitor | Coach | None":
+    """Look up a registration by integer ID from Competitor or Coach tables.
+
+    Accepts int or string; returns None if the ID is non-numeric or not found.
+    """
+    try:
+        reg_id = int(entry_id)
+    except (ValueError, TypeError):
+        return None
+    reg = db.session.get(Competitor, reg_id)
+    if reg is not None:
+        return reg
+    return db.session.get(Coach, reg_id)
+
+
+def create_entry(body: dict) -> tuple:
+    """Validate and persist a registration record to the database.
+
+    Performs school resolution, duplicate detection, and creates the appropriate
+    Competitor or Coach record.  The session is flushed (not committed) on success
+    so the caller can attach additional fields (e.g. checkout_session_id) before
+    committing.
+
+    Returns:
+        (reg, None, None, new_school_name_or_none) on success – reg is flushed but not yet committed.
+        (None, error_msg, code, None)              on failure – session is rolled back.
+    """
+    school, is_new = School.get_or_create(body.get("school"))
+    if school is None:
+        db.session.rollback()
+        return None, "School is required", 422, None
+
+    if entry_exists(body["full_name"], school.id, body["reg_type"]):
+        db.session.rollback()
+        return None, f"Duplicate registration for {body['full_name']}", 409, None
+
+    if body["reg_type"] == "competitor":
+        coach_name = (body.get("coach") or "").strip() or None
+        coach_id = None
+        if coach_name:
+            linked_coach = Coach.find_by_name_and_school(coach_name, school.id)
+            coach_id = linked_coach.id if linked_coach else None
+        reg = Competitor(
+            full_name=body["full_name"],
+            email=body["email"],
+            phone=body.get("phone"),
+            school_id=school.id,
+            coach_id=coach_id,
+            parent=body.get("parent"),
+            birthdate=body.get("birthdate"),
+            age=body.get("age"),
+            gender=body.get("gender"),
+            weight=body.get("weight"),
+            height=body.get("height"),
+            belt_rank=body.get("belt_rank"),
+            events=",".join(body.get("events", [])),
+            poomsae_form=body.get("poomsae_form"),
+            wc_poomsae_form=body.get("wc_poomsae_form"),
+            pair_poomsae_form=body.get("pair_poomsae_form"),
+            team_poomsae_form=body.get("team_poomsae_form"),
+            family_poomsae_form=body.get("family_poomsae_form"),
+            medical_contacts=body.get("medical_contacts"),
+            medical_conditions=body.get("medical_conditions", []),
+            allergies=body.get("allergies", []),
+            medications=body.get("medications", []),
+            img_filename=body.get("img_filename"),
+            tshirt=body.get("tshirt"),
+            status="pending",
+        )
+    else:
+        reg = Coach(
+            full_name=body["full_name"],
+            email=body["email"],
+            phone=body.get("phone"),
+            school_id=school.id,
+            img_filename=body.get("img_filename"),
+        )
+
+    db.session.add(reg)
+    db.session.flush()
+    return reg, None, None, school.name if is_new else None
 
 
 def init_db(app):
