@@ -304,7 +304,6 @@ class TestEntriesAPI:
         assert any(entry.get("id") == co_id and entry.get("reg_type") == "coach" for entry in entries)
 
     def test_status_filter_complete(self):
-        from api import get_eligible_competitors
         from models import Competitor
         from models import db as _db
 
@@ -331,13 +330,12 @@ class TestEntriesAPI:
             complete_id = complete.id
             pending_id = pending.id
 
-            results = get_eligible_competitors(status="complete")
+            results = Competitor.eligible(status="complete")
             result_ids = [c.id for c in results]
             assert complete_id in result_ids
             assert pending_id not in result_ids
 
     def test_status_filter_none_returns_all(self):
-        from api import get_eligible_competitors
         from models import Competitor
         from models import db as _db
 
@@ -363,7 +361,7 @@ class TestEntriesAPI:
             _db.session.commit()
             id1, id2 = c1.id, c2.id
 
-            results = get_eligible_competitors(status=None)
+            results = Competitor.eligible(status=None)
             result_ids = [c.id for c in results]
             assert id1 in result_ids
             assert id2 in result_ids
