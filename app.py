@@ -27,8 +27,8 @@ from flask import (
 from supabase import Client, create_client
 from zoneinfo import ZoneInfo
 
-from api import api_bp, create_registration_record, send_admin_alert, send_admin_school_alert
-from models import Coach, Competitor, School, db, init_db
+from api import api_bp, send_admin_alert, send_admin_school_alert
+from models import Coach, Competitor, School, age_group_for, create_entry, db, entry_exists, init_db
 
 ui_bp = Blueprint("ui", __name__)
 
@@ -120,20 +120,6 @@ def _load_historical_entries(email: str) -> list:
         return [e for e in entries if e.get("email") == email]
     except Exception:
         return []
-
-
-def get_age_group(age):
-    age_groups = {
-        "too_young": list(range(0, 4)),
-        "dragon": [4, 5, 6, 7],
-        "tiger": [8, 9],
-        "youth": [10, 11],
-        "cadet": [12, 13, 14],
-        "junior": [15, 16],
-        "senior": list(range(17, 33)),
-        "ultra": list(range(33, 100)),
-    }
-    return next((group for group, ages in age_groups.items() if int(age) in ages), "too_old")
 
 
 def render_base(content_file, **page_params):
@@ -417,7 +403,7 @@ def display_form():
 
     early_reg_coupon = stripe.Coupon.list(limit=1).data[0]
     reg_type = request.args.get("reg_type")
-    school_list = _get_schools_list()
+    school_list = School.all_names()
 
     page_params = {
         "early_reg_date": datetime.fromtimestamp(early_reg_coupon["redeem_by"]).replace(tzinfo=config["TZ_LOCAL"]),
@@ -431,31 +417,6 @@ def display_form():
     if request.headers.get("HX-Request"):
         return render_template("form.html", button_style=os.getenv("BUTTON_STYLE", "btn-primary"), **page_params)
     return render_base("form.html", **page_params)
-
-
-def _get_schools_list() -> list:
-    """Get all school names from the database, sorted."""
-    schools = School.query.order_by(School.name).all()
-    return [s.name for s in schools]
-
-
-def _get_or_create_school(school_name: str) -> "School | None":
-    """Get school by name or create if it doesn't exist."""
-    if not school_name:
-        return None
-    school = School.query.filter_by(name=school_name).first()
-    if not school:
-        school = School(name=school_name)
-        db.session.add(school)
-        db.session.flush()  # Ensure it has an ID without committing
-    return school
-
-
-def _get_coach_by_name_and_school(coach_name: str, school_id: int) -> "Coach | None":
-    """Look up a coach by exact name and school_id. Returns None if not found."""
-    if not coach_name or not school_id:
-        return None
-    return Coach.query.filter_by(full_name=coach_name, school_id=school_id).first()
 
 
 def _normalize_gender(value: "str | None") -> "str | None":
@@ -577,7 +538,7 @@ def handle_form():
             }
         )
 
-    reg, err_msg, err_code, new_school_name = create_registration_record(payload)
+    reg, err_msg, err_code, new_school_name = create_entry(payload)
     if err_msg:
         if err_code == 409:
             return redirect(f'{config["URL"]}/registration_error?reg_type={reg_type}')
@@ -713,11 +674,11 @@ def autofill():
         try:
             birthdate = datetime.strptime(entry["birthdate"], "%Y-%m-%d")
             entry["age"] = str(date.today().year - birthdate.year)
-            entry["age_group"] = get_age_group(int(entry["age"]))
+            entry["age_group"] = age_group_for(int(entry["age"]))
         except (ValueError, TypeError):
             pass
 
-    schools = _get_schools_list()
+    schools = School.all_names()
 
     # Process medical arrays (native format)
     entry["allergies"] = entry.get("allergies") or []
@@ -795,7 +756,7 @@ def api_validate_birthdate():
     try:
         birthdate = datetime.strptime(request.form.get("birthdate"), "%Y-%m-%d")
         age = datetime.now().year - birthdate.year
-        age_group = get_age_group(age)
+        age_group = age_group_for(age)
         date_valid = age_group not in ("too_young", "too_old")
     except ValueError:
         age = ""
@@ -818,7 +779,7 @@ def api_validate_school():
         "validation/school.html",
         school_selection=school_selection,
         school_valid=school_valid,
-        schools=_get_schools_list(),
+        schools=School.all_names(),
     )
 
 
@@ -897,7 +858,7 @@ def upload_item(resource):
 @ui_bp.route("/schools", methods=["GET"])
 @login_required
 def schools_page():
-    schools_list = _get_schools_list()
+    schools_list = School.all_names()
     if request.headers.get("HX-Request"):
         return render_template("api/schools.html", schools=schools_list, button_style=os.getenv("BUTTON_STYLE", "btn-primary"))
     return render_base("api/schools.html", schools=schools_list)
@@ -927,7 +888,7 @@ def add_entry_form():
     config = _current_app_config()
     early_reg_coupon = stripe.Coupon.list(limit=1).data[0]
     reg_type = request.args.get("reg_type")
-    school_list = _get_schools_list()
+    school_list = School.all_names()
     page_params = {
         "price_dict": get_price_details(),
         "early_reg_date": datetime.fromtimestamp(early_reg_coupon["redeem_by"]).replace(tzinfo=config["TZ_LOCAL"]),
@@ -956,16 +917,12 @@ def add_entry():
     coach_name = request.form.get("coach", "").strip()
 
     # Get or create school
-    school = _get_or_create_school(school_name)
+    school, _ = School.get_or_create(school_name)
     if not school:
         abort(400, "School is required")
 
     if not os.getenv("FLASK_DEBUG"):
-        if reg_type == "competitor":
-            duplicate = Competitor.query.filter_by(full_name=full_name, school_id=school.id).first()
-        else:
-            duplicate = Coach.query.filter_by(full_name=full_name, school_id=school.id).first()
-        if duplicate:
+        if entry_exists(full_name, school.id, reg_type):
             return redirect(f'{config["URL"]}/registration_error?reg_type={reg_type}')
 
     if reg_type == "competitor":
@@ -981,7 +938,7 @@ def add_entry():
         # Get or create coach if specified
         coach_id = None
         if coach_name:
-            coach = _get_coach_by_name_and_school(coach_name, school.id)
+            coach = Coach.find_by_name_and_school(coach_name, school.id)
             coach_id = coach.id if coach else None
 
         reg = Competitor(
@@ -1048,7 +1005,7 @@ def edit_entry_form():
     if reg is None:
         abort(404)
 
-    school_list = _get_schools_list()
+    school_list = School.all_names()
     entry = reg.to_dict()
 
     # Normalize birthdate from MM/DD/YYYY to YYYY-MM-DD for HTML date input
@@ -1079,7 +1036,7 @@ def edit_entry():
     reg = db.session.get(Competitor, reg_id)
     if reg:
         school_name = request.form.get("school")
-        school = _get_or_create_school(school_name)
+        school, _ = School.get_or_create(school_name)
         if not school:
             abort(400, "School is required")
 
@@ -1092,7 +1049,7 @@ def edit_entry():
         coach_name = request.form.get("coach", "").strip()
         coach_id = None
         if coach_name:
-            coach = _get_coach_by_name_and_school(coach_name, school.id)
+            coach = Coach.find_by_name_and_school(coach_name, school.id)
             coach_id = coach.id if coach else None
         reg.coach_id = coach_id
 
@@ -1121,7 +1078,7 @@ def edit_entry():
     reg = db.session.get(Coach, reg_id)
     if reg:
         school_name = request.form.get("school")
-        school = _get_or_create_school(school_name)
+        school, _ = School.get_or_create(school_name)
         if not school:
             abort(400, "School is required")
 

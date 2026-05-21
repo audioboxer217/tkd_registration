@@ -16,17 +16,13 @@ from apiflask.fields import Float, Integer, List, Nested, String
 from apiflask.validators import OneOf
 from flask import current_app, g, jsonify, request
 
-from models import Coach, Competitor, School, db
+from models import Coach, Competitor, School, age_group_for, create_entry, db, find_entry_by_id
 
 RegistrationRecord = Union[Competitor, Coach]
 
 api_bp = APIBlueprint("api", __name__, url_prefix="/api/v1", tag="Registrations")
 
 stripe.api_key = os.getenv("STRIPE_API_KEY")
-
-
-class DuplicateRegistrationError(Exception):
-    """Raised when a registration already exists for the same name/school/type."""
 
 
 # ---------------------------------------------------------------------------
@@ -243,22 +239,8 @@ def unprocessable(e):
 
 
 # ---------------------------------------------------------------------------
-# Helper: age group and weight class (shared business logic)
+# Helper: weight class (uses age_group_for from models)
 # ---------------------------------------------------------------------------
-
-
-def get_age_group(age):
-    age_groups = {
-        "too_young": list(range(0, 4)),
-        "dragon": [4, 5, 6, 7],
-        "tiger": [8, 9],
-        "youth": [10, 11],
-        "cadet": [12, 13, 14],
-        "junior": [15, 16],
-        "senior": list(range(17, 33)),
-        "ultra": list(range(33, 100)),
-    }
-    return next((group for group, ages in age_groups.items() if int(age) in ages), "too_old")
 
 
 def set_weight_class(entries, config_bucket):
@@ -285,7 +267,7 @@ def set_weight_class(entries, config_bucket):
             entry["weight_class"] = "UNKNOWN"
             updated.append(entry)
             continue
-        age_group = get_age_group(age)
+        age_group = age_group_for(age)
         entry["age_group"] = age_group
         gender_key = "female" if gender == "F" else "male" if gender == "M" else gender
         weight_class_ranges = weight_classes.get(age_group, {}).get(gender_key, {})
@@ -304,37 +286,6 @@ def set_weight_class(entries, config_bucket):
 # ---------------------------------------------------------------------------
 # Public endpoints
 # ---------------------------------------------------------------------------
-
-
-def _get_or_create_school(school_name: str):
-    if not school_name:
-        return None, None
-    school = School.query.filter_by(name=school_name).first()
-    new_school_name = None
-    if school is None:
-        school = School(name=school_name)
-        db.session.add(school)
-        db.session.flush()
-        new_school_name = school_name
-    return school, new_school_name
-
-
-def _find_reg_by_checkout_session(session_id):
-    return Competitor.query.filter_by(checkout_session_id=session_id).first()
-
-
-def _get_coach_by_name_and_school(coach_name: str, school_id: int):
-    """Look up a coach by exact name and school_id. Returns None if not found."""
-    if not coach_name or not school_id:
-        return None
-    return Coach.query.filter_by(full_name=coach_name, school_id=school_id).first()
-
-
-def _check_duplicate(full_name: str, school_id: int, reg_type: str) -> None:
-    model = Competitor if reg_type == "competitor" else Coach
-    existing = model.query.filter_by(full_name=full_name, school_id=school_id).first()
-    if existing:
-        raise DuplicateRegistrationError(f"Duplicate registration for {full_name}")
 
 
 def _send_admin_alert(subject: str, body: str) -> None:
@@ -496,76 +447,6 @@ def _send_confirmation_email(reg: RegistrationRecord) -> RegistrationRecord:
     return reg
 
 
-def create_registration_record(body: dict) -> tuple:
-    """Validate and persist a registration record to the database.
-
-    Performs school resolution, duplicate detection, and creates the appropriate
-    Competitor or Coach record.  The session is flushed (not committed) on success
-    so the caller can attach additional fields (e.g. checkout_session_id) before
-    committing.
-
-    Returns:
-        (reg, None, None, new_school_name_or_none) on success – reg is flushed but not yet committed.
-        (None, error_msg, code, None)          on failure – session is rolled back.
-    """
-    school, new_school_name = _get_or_create_school(body.get("school"))
-    if school is None:
-        db.session.rollback()
-        return None, "School is required", 422, None
-
-    try:
-        _check_duplicate(body["full_name"], school.id, body["reg_type"])
-    except DuplicateRegistrationError:
-        db.session.rollback()
-        return None, f"Duplicate registration for {body['full_name']}", 409, None
-
-    if body["reg_type"] == "competitor":
-        coach_name = (body.get("coach") or "").strip() or None
-        coach_id = None
-        if coach_name:
-            linked_coach = _get_coach_by_name_and_school(coach_name, school.id)
-            coach_id = linked_coach.id if linked_coach else None
-        reg = Competitor(
-            full_name=body["full_name"],
-            email=body["email"],
-            phone=body.get("phone"),
-            school_id=school.id,
-            coach_id=coach_id,
-            parent=body.get("parent"),
-            birthdate=body.get("birthdate"),
-            age=body.get("age"),
-            gender=body.get("gender"),
-            weight=body.get("weight"),
-            height=body.get("height"),
-            belt_rank=body.get("belt_rank"),
-            events=",".join(body.get("events", [])),
-            poomsae_form=body.get("poomsae_form"),
-            wc_poomsae_form=body.get("wc_poomsae_form"),
-            pair_poomsae_form=body.get("pair_poomsae_form"),
-            team_poomsae_form=body.get("team_poomsae_form"),
-            family_poomsae_form=body.get("family_poomsae_form"),
-            medical_contacts=body.get("medical_contacts"),
-            medical_conditions=body.get("medical_conditions", []),
-            allergies=body.get("allergies", []),
-            medications=body.get("medications", []),
-            img_filename=body.get("img_filename"),
-            tshirt=body.get("tshirt"),
-            status="pending",
-        )
-    else:
-        reg = Coach(
-            full_name=body["full_name"],
-            email=body["email"],
-            phone=body.get("phone"),
-            school_id=school.id,
-            img_filename=body.get("img_filename"),
-        )
-
-    db.session.add(reg)
-    db.session.flush()
-    return reg, None, None, new_school_name
-
-
 @api_bp.route("/registrations", methods=["POST"])
 @api_bp.input(RegistrationIn, arg_name="body")
 @api_bp.output(RegistrationCreateOut, status_code=201, description="Registration created")
@@ -576,7 +457,7 @@ def create_registration_record(body: dict) -> tuple:
     }
 )
 def create_registration(body):
-    reg, err_msg, err_code, new_school_name = create_registration_record(body)
+    reg, err_msg, err_code, new_school_name = create_entry(body)
     if err_msg:
         return _err_response(err_msg, err_code)
     db.session.commit()
@@ -613,7 +494,7 @@ def stripe_webhook():
         current_app.logger.warning("Stripe webhook received %s event with missing session id", event_type)
         return jsonify({"error": "Stripe checkout session ID is missing from webhook payload"}), 400
 
-    reg = _find_reg_by_checkout_session(session_id)
+    reg = Competitor.find_by_checkout_session(session_id)
     if reg is None:
         return jsonify({"status": "ok"}), 200
 
@@ -636,21 +517,6 @@ def stripe_webhook():
     return jsonify({"status": "ok"}), 200
 
 
-def get_eligible_competitors(status: str | None = "complete") -> list:
-    """Return competitors filtered by payment status.
-
-    Args:
-        status: Payment status to filter by (e.g. ``"complete"``).  Pass
-            ``None`` to return all competitors regardless of status.
-
-    Returns:
-        A list of :class:`~models.Competitor` ORM objects.
-    """
-    if status is None:
-        return Competitor.query.all()
-    return Competitor.query.filter_by(status=status).all()
-
-
 @api_bp.route("/entries", methods=["GET"])
 @api_bp.output(RegistrationListOut, description="All competitor and coach registrations")
 def entries_api():
@@ -663,7 +529,7 @@ def entries_api():
     config_bucket = os.getenv("CONFIG_BUCKET")
     status_filter = request.args.get("status") or None
 
-    competitors = get_eligible_competitors(status=status_filter)
+    competitors = Competitor.eligible(status=status_filter)
     coaches = Coach.query.all()
 
     competitor_dicts = [c.to_dict() for c in competitors]
@@ -731,25 +597,6 @@ def registration_status(registration_id):
 # ---------------------------------------------------------------------------
 
 
-def _get_registration_by_id(registration_id):
-    """Look up a registration by integer ID from Competitor or Coach tables.
-
-    Returns (record, reg_type) tuple, or (None, None) if not found.
-    """
-    try:
-        reg_id = int(registration_id)
-    except (ValueError, TypeError):
-        return None, None
-
-    reg = db.session.get(Competitor, reg_id)
-    if reg is not None:
-        return reg, "competitor"
-    reg = db.session.get(Coach, reg_id)
-    if reg is not None:
-        return reg, "coach"
-    return None, None
-
-
 @api_bp.route("/admin/registrations", methods=["GET"])
 @api_bp.doc(security=[{"BearerAuth": []}], responses={401: _err("Unauthorized")})
 @api_auth_required
@@ -780,7 +627,7 @@ def admin_list_registrations():
 @api_bp.output(RegistrationDetailOut, description="Registration detail")
 def admin_get_registration(registration_id):
     """Get a single registration by ID."""
-    reg, _ = _get_registration_by_id(registration_id)
+    reg = find_entry_by_id(registration_id)
     if reg is None:
         return jsonify({"error": "Not found"}), 404
     return jsonify({"data": reg.to_dict()})
@@ -793,7 +640,7 @@ def admin_get_registration(registration_id):
 @api_bp.output(RegistrationDetailOut, description="Updated registration")
 def admin_update_registration(registration_id, body):
     """Update editable fields on a registration."""
-    reg, _ = _get_registration_by_id(registration_id)
+    reg = find_entry_by_id(registration_id)
     if reg is None:
         return jsonify({"error": "Not found"}), 404
 
@@ -813,7 +660,7 @@ def admin_update_registration(registration_id, body):
 @api_bp.output(DeletedOut, description="Deleted registration ID")
 def admin_delete_registration(registration_id):
     """Delete a registration by ID."""
-    reg, _ = _get_registration_by_id(registration_id)
+    reg = find_entry_by_id(registration_id)
     if reg is None:
         return jsonify({"error": "Not found"}), 404
     db.session.delete(reg)
