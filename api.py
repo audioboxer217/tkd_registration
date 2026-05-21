@@ -18,9 +18,9 @@ from flask import current_app, g, jsonify, request
 
 from models import Coach, Competitor, School, age_group_for, create_entry, db, find_entry_by_id
 
-RegistrationRecord = Union[Competitor, Coach]
+EntryRecord = Union[Competitor, Coach]
 
-api_bp = APIBlueprint("api", __name__, url_prefix="/api/v1", tag="Registrations")
+api_bp = APIBlueprint("api", __name__, url_prefix="/api/v1", tag="Entries")
 
 stripe.api_key = os.getenv("STRIPE_API_KEY")
 
@@ -30,7 +30,7 @@ stripe.api_key = os.getenv("STRIPE_API_KEY")
 # ---------------------------------------------------------------------------
 
 
-class RegistrationOut(Schema):
+class EntryOut(Schema):
     id = Integer()
     full_name = String()
     email = String()
@@ -60,19 +60,19 @@ class RegistrationOut(Schema):
     updated_at = String()
 
 
-class RegistrationListOut(Schema):
-    data = List(Nested(RegistrationOut))
+class EntryListOut(Schema):
+    data = List(Nested(EntryOut))
 
 
-class RegistrationDetailOut(Schema):
-    data = Nested(RegistrationOut)
+class EntryDetailOut(Schema):
+    data = Nested(EntryOut)
 
 
-class RegistrationStatusOut(Schema):
-    data = Nested(lambda: RegistrationStatusData())
+class EntryStatusOut(Schema):
+    data = Nested(lambda: EntryStatusData())
 
 
-class RegistrationStatusData(Schema):
+class EntryStatusData(Schema):
     id = String()
     full_name = String()
     reg_type = String()
@@ -81,15 +81,15 @@ class RegistrationStatusData(Schema):
     payment_intent = String(allow_none=True)
 
 
-class RegistrationCreatedData(Schema):
+class EntryCreatedData(Schema):
     id = Integer()
 
 
-class RegistrationCreateOut(Schema):
-    data = Nested(lambda: RegistrationCreatedData())
+class EntryCreateOut(Schema):
+    data = Nested(lambda: EntryCreatedData())
 
 
-class RegistrationIn(Schema):
+class EntryIn(Schema):
     reg_type = String(validate=OneOf(["competitor", "coach"]), required=True)
     full_name = String(required=True)
     email = String(required=True)
@@ -117,7 +117,7 @@ class RegistrationIn(Schema):
     img_filename = String()
 
 
-class RegistrationUpdateIn(Schema):
+class EntryUpdateIn(Schema):
     full_name = String()
     email = String()
     phone = String()
@@ -338,7 +338,7 @@ def send_admin_school_alert(school_name: str) -> None:
     _send_admin_school_alert(school_name)
 
 
-def _send_confirmation_email(reg: RegistrationRecord) -> RegistrationRecord:
+def _send_confirmation_email(reg: EntryRecord) -> EntryRecord:
     """Send a confirmation email directly via SMTP using SQLAlchemy model fields."""
     comp_year = os.environ.get("COMPETITION_YEAR", "")
     comp_name = os.environ.get("COMPETITION_NAME", "")
@@ -447,16 +447,16 @@ def _send_confirmation_email(reg: RegistrationRecord) -> RegistrationRecord:
     return reg
 
 
-@api_bp.route("/registrations", methods=["POST"])
-@api_bp.input(RegistrationIn, arg_name="body")
-@api_bp.output(RegistrationCreateOut, status_code=201, description="Registration created")
+@api_bp.route("/entries", methods=["POST"])
+@api_bp.input(EntryIn, arg_name="body")
+@api_bp.output(EntryCreateOut, status_code=201, description="Entry created")
 @api_bp.doc(
     responses={
-        409: _err("Duplicate registration"),
+        409: _err("Duplicate entry"),
         422: _err("Validation error"),
     }
 )
-def create_registration(body):
+def create_entry_api(body):
     reg, err_msg, err_code, new_school_name = create_entry(body)
     if err_msg:
         return _err_response(err_msg, err_code)
@@ -518,7 +518,7 @@ def stripe_webhook():
 
 
 @api_bp.route("/entries", methods=["GET"])
-@api_bp.output(RegistrationListOut, description="All competitor and coach registrations")
+@api_bp.output(EntryListOut, description="All competitor and coach entries")
 def entries_api():
     """Return all competitor and coach registrations as JSON.
 
@@ -540,10 +540,10 @@ def entries_api():
     return jsonify({"data": competitor_dicts + coach_dicts})
 
 
-@api_bp.route("/registrations/<string:registration_id>/status", methods=["GET"])
-@api_bp.output(RegistrationStatusOut, description="Registration and payment status")
+@api_bp.route("/entries/<string:entry_id>/status", methods=["GET"])
+@api_bp.output(EntryStatusOut, description="Entry and payment status")
 @api_bp.doc(responses={404: _err("Not found")})
-def registration_status(registration_id):
+def get_entry_status(entry_id):
     """Check registration and payment status by ID.
 
     Pass ``?type=coach`` to look up a coach record; omit or pass ``?type=competitor``
@@ -551,7 +551,7 @@ def registration_status(registration_id):
     the same integer primary key.
     """
     try:
-        reg_id = int(registration_id)
+        reg_id = int(entry_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Not found"}), 404
 
@@ -597,12 +597,12 @@ def registration_status(registration_id):
 # ---------------------------------------------------------------------------
 
 
-@api_bp.route("/admin/registrations", methods=["GET"])
+@api_bp.route("/admin/entries", methods=["GET"])
 @api_bp.doc(security=[{"BearerAuth": []}], responses={401: _err("Unauthorized")})
 @api_auth_required
-@api_bp.output(RegistrationListOut, description="All registrations")
-def admin_list_registrations():
-    """List all registrations with optional reg_type filter."""
+@api_bp.output(EntryListOut, description="All entries")
+def admin_list_entries():
+    """List all entries with optional reg_type filter."""
     reg_type = request.args.get("reg_type")
 
     results = []
@@ -621,26 +621,26 @@ def admin_list_registrations():
     return jsonify({"data": results})
 
 
-@api_bp.route("/admin/registrations/<string:registration_id>", methods=["GET"])
+@api_bp.route("/admin/entries/<string:entry_id>", methods=["GET"])
 @api_bp.doc(security=[{"BearerAuth": []}], responses={401: _err("Unauthorized"), 404: _err("Not found")})
 @api_auth_required
-@api_bp.output(RegistrationDetailOut, description="Registration detail")
-def admin_get_registration(registration_id):
-    """Get a single registration by ID."""
-    reg = find_entry_by_id(registration_id)
+@api_bp.output(EntryDetailOut, description="Entry detail")
+def admin_get_entry(entry_id):
+    """Get a single entry by ID."""
+    reg = find_entry_by_id(entry_id)
     if reg is None:
         return jsonify({"error": "Not found"}), 404
     return jsonify({"data": reg.to_dict()})
 
 
-@api_bp.route("/admin/registrations/<string:registration_id>", methods=["PUT"])
+@api_bp.route("/admin/entries/<string:entry_id>", methods=["PUT"])
 @api_bp.doc(security=[{"BearerAuth": []}], responses={401: _err("Unauthorized"), 404: _err("Not found")})
 @api_auth_required
-@api_bp.input(RegistrationUpdateIn, arg_name="body")
-@api_bp.output(RegistrationDetailOut, description="Updated registration")
-def admin_update_registration(registration_id, body):
-    """Update editable fields on a registration."""
-    reg = find_entry_by_id(registration_id)
+@api_bp.input(EntryUpdateIn, arg_name="body")
+@api_bp.output(EntryDetailOut, description="Updated entry")
+def admin_update_entry(entry_id, body):
+    """Update editable fields on an entry."""
+    reg = find_entry_by_id(entry_id)
     if reg is None:
         return jsonify({"error": "Not found"}), 404
 
@@ -654,18 +654,18 @@ def admin_update_registration(registration_id, body):
     return jsonify({"data": reg.to_dict()})
 
 
-@api_bp.route("/admin/registrations/<string:registration_id>", methods=["DELETE"])
+@api_bp.route("/admin/entries/<string:entry_id>", methods=["DELETE"])
 @api_bp.doc(security=[{"BearerAuth": []}], responses={401: _err("Unauthorized"), 404: _err("Not found")})
 @api_auth_required
-@api_bp.output(DeletedOut, description="Deleted registration ID")
-def admin_delete_registration(registration_id):
-    """Delete a registration by ID."""
-    reg = find_entry_by_id(registration_id)
+@api_bp.output(DeletedOut, description="Deleted entry ID")
+def admin_delete_entry(entry_id):
+    """Delete an entry by ID."""
+    reg = find_entry_by_id(entry_id)
     if reg is None:
         return jsonify({"error": "Not found"}), 404
     db.session.delete(reg)
     db.session.commit()
-    return jsonify({"data": {"deleted": str(registration_id)}}), 200
+    return jsonify({"data": {"deleted": str(entry_id)}}), 200
 
 
 @api_bp.route("/admin/upload/<string:resource>", methods=["POST"])

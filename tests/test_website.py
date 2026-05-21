@@ -402,7 +402,7 @@ class TestEntriesAPI:
         assert pending_id not in result_ids
 
 
-class TestRegistrationsAPI:
+class TestEntryCreateAPI:
     client = app.test_client()
 
     def test_create_pending_competitor_registration(self):
@@ -414,7 +414,7 @@ class TestRegistrationsAPI:
             "school": "Webhook School",
         }
 
-        response = self.client.post("/api/v1/registrations", json=payload)
+        response = self.client.post("/api/v1/entries", json=payload)
 
         assert response.status_code == 201
         response_data = json.loads(response.data)
@@ -455,7 +455,7 @@ class TestRegistrationsAPI:
         }
 
         with patch("api.stripe.checkout.Session.create") as mock_create:
-            response = self.client.post("/api/v1/registrations", json=payload)
+            response = self.client.post("/api/v1/entries", json=payload)
 
         mock_create.assert_not_called()
         assert response.status_code == 201
@@ -477,7 +477,7 @@ class TestRegistrationsAPI:
             "coach": "Nonexistent Coach",
         }
 
-        response = self.client.post("/api/v1/registrations", json=payload)
+        response = self.client.post("/api/v1/entries", json=payload)
 
         assert response.status_code == 201
 
@@ -498,7 +498,7 @@ class TestRegistrationsAPI:
         }
 
         with patch("api.stripe.checkout.Session.create") as mock_create:
-            response = self.client.post("/api/v1/registrations", json=payload)
+            response = self.client.post("/api/v1/entries", json=payload)
 
         # Coaches do not go through Stripe; Stripe must NOT be called.
         mock_create.assert_not_called()
@@ -539,7 +539,7 @@ class TestRegistrationsAPI:
         }
 
         with patch("api.stripe.checkout.Session.create") as mock_create:
-            response = self.client.post("/api/v1/registrations", json=payload)
+            response = self.client.post("/api/v1/entries", json=payload)
 
         mock_create.assert_not_called()
         assert response.status_code == 409
@@ -547,7 +547,7 @@ class TestRegistrationsAPI:
         assert data["error"] == "Duplicate registration for Duplicate Person"
 
     def test_create_registration_validation_error_returns_string_error(self):
-        response = self.client.post("/api/v1/registrations", json={})
+        response = self.client.post("/api/v1/entries", json={})
 
         assert response.status_code == 422
         data = json.loads(response.data)
@@ -567,7 +567,7 @@ class TestRegistrationsAPI:
             patch("api.db.session.commit", side_effect=RuntimeError("commit failed")),
         ):
             with pytest.raises(RuntimeError, match="commit failed"):
-                self.client.post("/api/v1/registrations", json=payload)
+                self.client.post("/api/v1/entries", json=payload)
 
         send_alert.assert_not_called()
 
@@ -586,7 +586,7 @@ class TestRegistrationsAPI:
             _db.session.commit()
             coach_id = coach.id
 
-        response = self.client.get(f"/api/v1/registrations/{coach_id}/status?type=coach")
+        response = self.client.get(f"/api/v1/entries/{coach_id}/status?type=coach")
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["data"]["reg_type"] == "coach"
@@ -609,7 +609,7 @@ class TestRegistrationsAPI:
             _db.session.commit()
             reg_id = competitor.id
 
-        response = self.client.get(f"/api/v1/registrations/{reg_id}/status")
+        response = self.client.get(f"/api/v1/entries/{reg_id}/status")
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["data"]["status"] == "complete"
@@ -811,7 +811,7 @@ class TestRegistrationsAPI:
         }
 
         with patch("api.send_admin_school_alert") as mock_alert:
-            response = self.client.post("/api/v1/registrations", json=payload)
+            response = self.client.post("/api/v1/entries", json=payload)
 
         assert response.status_code == 201
         mock_alert.assert_called_once_with("Brand New Unknown School")
@@ -835,7 +835,7 @@ class TestRegistrationsAPI:
             _db.session.commit()
             reg_id = competitor.id
 
-        response = self.client.get(f"/api/v1/registrations/{reg_id}/status")
+        response = self.client.get(f"/api/v1/entries/{reg_id}/status")
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["data"]["payment_intent"] == "pi_test_payintent"
