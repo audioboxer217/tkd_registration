@@ -405,7 +405,7 @@ class TestEntriesAPI:
 class TestEntryCreateAPI:
     client = app.test_client()
 
-    def test_create_pending_competitor_registration(self):
+    def test_create_pending_competitor_entry(self):
         payload = {
             "reg_type": "competitor",
             "full_name": "Webhook Pending Competitor",
@@ -430,7 +430,7 @@ class TestEntryCreateAPI:
             assert competitor.checkout_session_id is None
             assert competitor.school.name == "Webhook School"
 
-    def test_create_competitor_registration_links_coach(self):
+    def test_create_competitor_entry_links_coach(self):
         from models import Coach
         from models import db as _db
 
@@ -467,7 +467,7 @@ class TestEntryCreateAPI:
             assert competitor is not None
             assert competitor.coach_id == coach_id
 
-    def test_create_competitor_registration_unknown_coach_sets_null(self):
+    def test_create_competitor_entry_unknown_coach_sets_null(self):
         payload = {
             "reg_type": "competitor",
             "full_name": "Unknown Coach Competitor",
@@ -488,7 +488,7 @@ class TestEntryCreateAPI:
             assert competitor is not None
             assert competitor.coach_id is None
 
-    def test_create_pending_coach_registration(self):
+    def test_create_pending_coach_entry(self):
         payload = {
             "reg_type": "coach",
             "full_name": "Webhook Pending Coach",
@@ -515,7 +515,7 @@ class TestEntryCreateAPI:
             assert coach is not None
             assert coach.school.name == "Webhook School"
 
-    def test_create_registration_returns_409_for_duplicate_competitor(self):
+    def test_create_entry_returns_409_for_duplicate_competitor(self):
         from models import Competitor
         from models import db as _db
 
@@ -544,16 +544,16 @@ class TestEntryCreateAPI:
         mock_create.assert_not_called()
         assert response.status_code == 409
         data = json.loads(response.data)
-        assert data["error"] == "Duplicate registration for Duplicate Person"
+        assert data["error"] == "Duplicate entry for Duplicate Person"
 
-    def test_create_registration_validation_error_returns_string_error(self):
+    def test_create_entry_validation_error_returns_string_error(self):
         response = self.client.post("/api/v1/entries", json={})
 
         assert response.status_code == 422
         data = json.loads(response.data)
         assert isinstance(data.get("error", data.get("message")), str)
 
-    def test_create_registration_does_not_send_school_alert_when_commit_fails(self):
+    def test_create_entry_does_not_send_school_alert_when_commit_fails(self):
         payload = {
             "reg_type": "coach",
             "full_name": "Commit Failure Coach",
@@ -571,7 +571,7 @@ class TestEntryCreateAPI:
 
         send_alert.assert_not_called()
 
-    def test_registration_status_coach_returns_null_status(self):
+    def test_entry_status_coach_returns_null_status(self):
         from models import Coach
         from models import db as _db
 
@@ -592,7 +592,7 @@ class TestEntryCreateAPI:
         assert data["data"]["reg_type"] == "coach"
         assert data["data"]["status"] is None
 
-    def test_registration_status_returns_status(self):
+    def test_entry_status_returns_status(self):
         from models import Competitor
         from models import db as _db
 
@@ -817,7 +817,7 @@ class TestEntryCreateAPI:
         mock_alert.assert_called_once_with("Brand New Unknown School")
 
     def test_registration_status_includes_payment_intent(self):
-        """registration_status endpoint should return payment_intent field."""
+        """get_entry_status endpoint should return payment_intent field."""
         from models import Competitor
         from models import db as _db
 
@@ -1989,6 +1989,134 @@ class TestAdminAlertBranches:
         assert status_code == 500
         assert "Administrator" in response_body
         assert "mailto:None" not in response_body
+
+
+class TestAdminEntriesAPI:
+    """Tests for the admin entry CRUD endpoints at /api/v1/admin/entries."""
+
+    client = app.test_client()
+
+    def _auth_headers(self):
+        return {"Authorization": "Bearer test_token"}
+
+    def _mock_jwt(self):
+        """Patch jwt.decode to return an admin payload for the duration of a with-block."""
+        return patch(
+            "jwt.decode",
+            return_value={"app_metadata": {"role": "admin"}},
+        )
+
+    def test_admin_list_entries_requires_auth(self):
+        response = self.client.get("/api/v1/admin/entries")
+        assert response.status_code == 401
+
+    def test_admin_list_entries_returns_all(self):
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+        ):
+            response = self.client.get("/api/v1/admin/entries", headers=self._auth_headers())
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert "data" in data
+
+    def test_admin_get_entry_not_found(self):
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+        ):
+            response = self.client.get("/api/v1/admin/entries/9999999", headers=self._auth_headers())
+        assert response.status_code == 404
+
+    def test_admin_get_entry_returns_record(self):
+        from models import Competitor
+        from models import db as _db
+
+        school_id = get_or_create_test_school("Admin Get School")
+        with app.app_context():
+            competitor = Competitor(
+                full_name="Admin Get Competitor",
+                email="admin_get@example.com",
+                school_id=school_id,
+                status="pending",
+            )
+            _db.session.add(competitor)
+            _db.session.commit()
+            entry_id = competitor.id
+
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+        ):
+            response = self.client.get(f"/api/v1/admin/entries/{entry_id}", headers=self._auth_headers())
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["data"]["full_name"] == "Admin Get Competitor"
+
+    def test_admin_update_entry_requires_auth(self):
+        response = self.client.put("/api/v1/admin/entries/1", json={"full_name": "X"})
+        assert response.status_code == 401
+
+    def test_admin_update_entry_returns_updated_record(self):
+        from models import Competitor
+        from models import db as _db
+
+        school_id = get_or_create_test_school("Admin Update School")
+        with app.app_context():
+            competitor = Competitor(
+                full_name="Before Update",
+                email="admin_update@example.com",
+                school_id=school_id,
+                status="pending",
+            )
+            _db.session.add(competitor)
+            _db.session.commit()
+            entry_id = competitor.id
+
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+        ):
+            response = self.client.put(
+                f"/api/v1/admin/entries/{entry_id}",
+                json={"full_name": "After Update"},
+                headers=self._auth_headers(),
+            )
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["data"]["full_name"] == "After Update"
+
+    def test_admin_delete_entry_requires_auth(self):
+        response = self.client.delete("/api/v1/admin/entries/1")
+        assert response.status_code == 401
+
+    def test_admin_delete_entry_removes_record(self):
+        from models import Competitor
+        from models import db as _db
+
+        school_id = get_or_create_test_school("Admin Delete School")
+        with app.app_context():
+            competitor = Competitor(
+                full_name="To Be Deleted",
+                email="admin_delete@example.com",
+                school_id=school_id,
+                status="pending",
+            )
+            _db.session.add(competitor)
+            _db.session.commit()
+            entry_id = competitor.id
+
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+        ):
+            response = self.client.delete(f"/api/v1/admin/entries/{entry_id}", headers=self._auth_headers())
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["data"]["deleted"] == str(entry_id)
+
+        with app.app_context():
+            assert _db.session.get(Competitor, entry_id) is None
 
 
 if __name__ == "__main__":
