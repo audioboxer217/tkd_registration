@@ -52,10 +52,10 @@
 
 ## Files Modified
 
-- `models.py` - Added School, Coach, Competitor models
+- `models.py` - Added School, Coach, Competitor models; removed legacy Registration class
 - `api.py` - Updated all endpoints for new models
 - `app.py` - Updated form handlers and admin logic
-- `scripts/fuzzy_match_coaches.py` - New script for coach matching
+- `scripts/fuzzy_match_coaches.py` - ~~Created for one-shot coach matching~~ (deleted after migration complete)
 
 ## Database Tables
 

@@ -67,7 +67,6 @@ graph TB
     class FrontendApp frontend
     class UIBlueprint,APIBlueprint,Models frontendComponent
     class SchoolsTable,CoachesTable,CompetitorsTable,S3 database
-    class RegistrationsTable legacy
     class Stripe,SupabaseAuth external
 ```
 
@@ -84,7 +83,7 @@ graph TB
 ```
 app.py        # UI Blueprint — all page and HTMX partial routes (Flask)
 api.py        # API Blueprint — JSON REST endpoints at /api/v1
-models.py     # SQLAlchemy models (School, Coach, Competitor, Registration [legacy])
+models.py     # SQLAlchemy models (School, Coach, Competitor)
 templates/    # Jinja2 HTML templates
 static/       # Static assets (CSS, images, etc.)
 tests/        # pytest test suite
