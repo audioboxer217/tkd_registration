@@ -33,11 +33,15 @@ This document tracks the migration from AWS DynamoDB to Supabase PostgreSQL with
 10. ✅ All tests passing with new schema
 
 ### Phase 3: ✅ Completed (May 2026)
-**Goal**: Final verification and cleanup
+**Goal**: Remove migration artifacts and clean up legacy code
 
 - ✅ Ran fuzzy_match_coaches.py to finalize coach linking (>85% confidence threshold)
 - ✅ Removed `Registration` ORM model from `models.py` (dead code — table kept as DB archive)
 - ✅ Deleted `scripts/fuzzy_match_coaches.py` (one-shot migration script, no longer needed)
+
+### Phase 4: 🟡 In Progress
+**Goal**: End-to-end verification
+
 - [ ] Verify admin workflows (add/edit/view entries work correctly)
 - [ ] Test registration flow end-to-end with new schema
 - [ ] Performance testing (query times, indexes)
