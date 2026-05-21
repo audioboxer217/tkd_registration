@@ -2,13 +2,10 @@ from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Numeric, String, Text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.types import JSON
 
 db = SQLAlchemy()
-
-
-class DuplicateEntryError(Exception):
-    """Raised when an entry already exists for the same name/school/type."""
 
 
 class School(db.Model):
@@ -36,6 +33,8 @@ class School(db.Model):
 
         Flushes (but does not commit) when a new school is created.
         Returns (None, False) when name is empty/None.
+        Handles concurrent inserts (e.g. parallel Lambda invocations) by catching
+        IntegrityError on the unique-name constraint and re-querying.
         """
         if not name:
             return None, False
@@ -44,8 +43,12 @@ class School(db.Model):
             return school, False
         school = cls(name=name)
         db.session.add(school)
-        db.session.flush()
-        return school, True
+        try:
+            db.session.flush()
+            return school, True
+        except IntegrityError:
+            db.session.rollback()
+            return cls.query.filter_by(name=name).first(), False
 
     @classmethod
     def all_names(cls) -> list:
