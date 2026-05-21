@@ -32,15 +32,15 @@ This document tracks the migration from AWS DynamoDB to Supabase PostgreSQL with
 9. ✅ Fuzzy-matched competitor coaches to coach records (>85% confidence)
 10. ✅ All tests passing with new schema
 
-### Phase 3: 🟡 In Progress (Apr 2026)
+### Phase 3: ✅ Completed (May 2026)
 **Goal**: Final verification and cleanup
 
-- [ ] Run fuzzy_match_coaches.py on production data to finalize coach linking
-- [ ] Manually review unmatched coaches (logged in script output)
+- ✅ Ran fuzzy_match_coaches.py to finalize coach linking (>85% confidence threshold)
+- ✅ Removed `Registration` ORM model from `models.py` (dead code — table kept as DB archive)
+- ✅ Deleted `scripts/fuzzy_match_coaches.py` (one-shot migration script, no longer needed)
 - [ ] Verify admin workflows (add/edit/view entries work correctly)
 - [ ] Test registration flow end-to-end with new schema
 - [ ] Performance testing (query times, indexes)
-- [ ] Drop `registrations` table after verification
 
 ---
 
@@ -206,34 +206,6 @@ for reg in registrations:
         )
         db.session.add(competitor)
 db.session.commit()
-```
-
-### Step 3: Fuzzy Matching Coaches
-Script: `scripts/fuzzy_match_coaches.py`
-
-**Purpose**: Link competitor coach names to coach records
-
-**Approach**:
-- For each competitor with a coach_name but no coach_id
-- Find the coach in the same school with the closest name match
-- Use fuzzy string matching with >85% confidence threshold
-- Log unmatched coaches for manual review
-
-**Running the script**:
-```bash
-set -a && source .env && set +a
-uv run python scripts/fuzzy_match_coaches.py
-```
-
-**Output**:
-```
-Processing school: Dragon Dojo
-  - Competitor: Jane Doe, coach_name: Sensei John
-    → Found match: Coach #5 (Sensei John) [confidence: 0.95]
-    → Updated competitor #123
-
-Unmatched coaches (manual review required):
-  - Competitor #456: coach_name: "Master X" (school: Dragon Dojo) - no match found
 ```
 
 ---

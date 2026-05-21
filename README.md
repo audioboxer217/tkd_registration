@@ -15,7 +15,7 @@ graph TB
             subgraph "Frontend Components"
                 UIBlueprint["UI Blueprint<br/>(app.py — HTMX routes)"]
                 APIBlueprint["API Blueprint<br/>(api.py — JSON REST /api/v1)"]
-                Models["Models<br/>(models.py — SQLAlchemy)<br/>School · Coach · Competitor<br/>Registration (legacy)"]
+                Models["Models<br/>(models.py — SQLAlchemy)<br/>School · Coach · Competitor"]
             end
         end
 
@@ -24,7 +24,6 @@ graph TB
                 SchoolsTable[("schools")]
                 CoachesTable[("coaches")]
                 CompetitorsTable[("competitors")]
-                RegistrationsTable[("registrations<br/>(archive)")]
             end
             S3[("S3 Buckets")]
         end
@@ -42,7 +41,6 @@ graph TB
     Models --> SchoolsTable
     Models --> CoachesTable
     Models --> CompetitorsTable
-    Models --> RegistrationsTable
 
     APIBlueprint --> EmailService
 
