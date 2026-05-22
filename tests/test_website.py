@@ -405,6 +405,16 @@ class TestEntriesAPI:
 class TestEntryCreateAPI:
     client = app.test_client()
 
+    def _auth_headers(self):
+        return {"Authorization": "Bearer test_token"}
+
+    def _mock_jwt(self):
+        return patch("jwt.decode", return_value={"app_metadata": {"role": "admin"}})
+
+    def test_create_entry_requires_auth(self):
+        response = self.client.post("/api/v1/entries", json={"reg_type": "competitor"})
+        assert response.status_code == 401
+
     def test_create_pending_competitor_entry(self):
         payload = {
             "reg_type": "competitor",
@@ -414,7 +424,8 @@ class TestEntryCreateAPI:
             "school": "Webhook School",
         }
 
-        response = self.client.post("/api/v1/entries", json=payload)
+        with patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}), self._mock_jwt():
+            response = self.client.post("/api/v1/entries", json=payload, headers=self._auth_headers())
 
         assert response.status_code == 201
         response_data = json.loads(response.data)
@@ -454,8 +465,12 @@ class TestEntryCreateAPI:
             "coach": "Linked Coach",
         }
 
-        with patch("api.stripe.checkout.Session.create") as mock_create:
-            response = self.client.post("/api/v1/entries", json=payload)
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+            patch("api.stripe.checkout.Session.create") as mock_create,
+        ):
+            response = self.client.post("/api/v1/entries", json=payload, headers=self._auth_headers())
 
         mock_create.assert_not_called()
         assert response.status_code == 201
@@ -477,7 +492,8 @@ class TestEntryCreateAPI:
             "coach": "Nonexistent Coach",
         }
 
-        response = self.client.post("/api/v1/entries", json=payload)
+        with patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}), self._mock_jwt():
+            response = self.client.post("/api/v1/entries", json=payload, headers=self._auth_headers())
 
         assert response.status_code == 201
 
@@ -497,8 +513,12 @@ class TestEntryCreateAPI:
             "school": "Webhook School",
         }
 
-        with patch("api.stripe.checkout.Session.create") as mock_create:
-            response = self.client.post("/api/v1/entries", json=payload)
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+            patch("api.stripe.checkout.Session.create") as mock_create,
+        ):
+            response = self.client.post("/api/v1/entries", json=payload, headers=self._auth_headers())
 
         # Coaches do not go through Stripe; Stripe must NOT be called.
         mock_create.assert_not_called()
@@ -538,8 +558,12 @@ class TestEntryCreateAPI:
             "school": "Duplicate API School",
         }
 
-        with patch("api.stripe.checkout.Session.create") as mock_create:
-            response = self.client.post("/api/v1/entries", json=payload)
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+            patch("api.stripe.checkout.Session.create") as mock_create,
+        ):
+            response = self.client.post("/api/v1/entries", json=payload, headers=self._auth_headers())
 
         mock_create.assert_not_called()
         assert response.status_code == 409
@@ -547,7 +571,8 @@ class TestEntryCreateAPI:
         assert data["error"] == "Duplicate entry for Duplicate Person"
 
     def test_create_entry_validation_error_returns_string_error(self):
-        response = self.client.post("/api/v1/entries", json={})
+        with patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}), self._mock_jwt():
+            response = self.client.post("/api/v1/entries", json={}, headers=self._auth_headers())
 
         assert response.status_code == 422
         data = json.loads(response.data)
@@ -563,11 +588,13 @@ class TestEntryCreateAPI:
         }
 
         with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
             patch("api.send_admin_school_alert") as send_alert,
             patch("api.db.session.commit", side_effect=RuntimeError("commit failed")),
         ):
             with pytest.raises(RuntimeError, match="commit failed"):
-                self.client.post("/api/v1/entries", json=payload)
+                self.client.post("/api/v1/entries", json=payload, headers=self._auth_headers())
 
         send_alert.assert_not_called()
 
@@ -810,8 +837,12 @@ class TestEntryCreateAPI:
             "school": "Brand New Unknown School",
         }
 
-        with patch("api.send_admin_school_alert") as mock_alert:
-            response = self.client.post("/api/v1/entries", json=payload)
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            self._mock_jwt(),
+            patch("api.send_admin_school_alert") as mock_alert,
+        ):
+            response = self.client.post("/api/v1/entries", json=payload, headers=self._auth_headers())
 
         assert response.status_code == 201
         mock_alert.assert_called_once_with("Brand New Unknown School")
