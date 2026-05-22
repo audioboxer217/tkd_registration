@@ -450,7 +450,13 @@ def _send_confirmation_email(reg: EntryRecord) -> EntryRecord:
 @api_bp.route("/entries", methods=["POST"])
 @api_bp.doc(
     security=[{"BearerAuth": []}],
-    responses={401: _err("Unauthorized"), 409: _err("Duplicate entry"), 422: _err("Validation error")},
+    responses={
+        401: _err("Unauthorized"),
+        403: _err("Forbidden"),
+        409: _err("Duplicate entry"),
+        422: _err("Validation error"),
+        500: _err("Server misconfiguration"),
+    },
 )
 @api_auth_required
 @api_bp.input(EntryIn, arg_name="body")
@@ -517,6 +523,8 @@ def stripe_webhook():
 
 
 @api_bp.route("/entries", methods=["GET"])
+@api_bp.doc(security=[{"BearerAuth": []}], responses={401: _err("Unauthorized")})
+@api_auth_required
 @api_bp.output(EntryListOut, description="All competitor and coach entries")
 def entries_api():
     """Return all competitor and coach entries as JSON.
