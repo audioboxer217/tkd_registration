@@ -448,14 +448,13 @@ def _send_confirmation_email(reg: EntryRecord) -> EntryRecord:
 
 
 @api_bp.route("/entries", methods=["POST"])
+@api_bp.doc(
+    security=[{"BearerAuth": []}],
+    responses={401: _err("Unauthorized"), 409: _err("Duplicate entry"), 422: _err("Validation error")},
+)
+@api_auth_required
 @api_bp.input(EntryIn, arg_name="body")
 @api_bp.output(EntryCreateOut, status_code=201, description="Entry created")
-@api_bp.doc(
-    responses={
-        409: _err("Duplicate entry"),
-        422: _err("Validation error"),
-    }
-)
 def create_entry_api(body):
     reg, err_msg, err_code, new_school_name = create_entry(body)
     if err_msg:
