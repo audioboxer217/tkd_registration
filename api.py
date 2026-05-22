@@ -634,7 +634,7 @@ def admin_list_entries():
 @api_bp.output(EntryDetailOut, description="Entry detail")
 def admin_get_entry(entry_id):
     """Get a single entry by ID."""
-    reg = find_entry_by_id(entry_id)
+    reg = find_entry_by_id(entry_id, reg_type=request.args.get("type"))
     if reg is None:
         return jsonify({"error": "Not found"}), 404
     return jsonify({"data": reg.to_dict()})
@@ -647,11 +647,14 @@ def admin_get_entry(entry_id):
 @api_bp.output(EntryDetailOut, description="Updated entry")
 def admin_update_entry(entry_id, body):
     """Update editable fields on an entry."""
-    reg = find_entry_by_id(entry_id)
+    reg = find_entry_by_id(entry_id, reg_type=request.args.get("type"))
     if reg is None:
         return jsonify({"error": "Not found"}), 404
 
+    valid_columns = {c.key for c in db.inspect(reg.__class__).mapper.column_attrs}
     for field, value in body.items():
+        if field not in valid_columns:
+            continue
         # Normalize events: accept list or string, persist as comma-separated string
         if field == "events" and isinstance(value, list):
             value = ",".join(value)
@@ -667,7 +670,7 @@ def admin_update_entry(entry_id, body):
 @api_bp.output(DeletedOut, description="Deleted entry ID")
 def admin_delete_entry(entry_id):
     """Delete an entry by ID."""
-    reg = find_entry_by_id(entry_id)
+    reg = find_entry_by_id(entry_id, reg_type=request.args.get("type"))
     if reg is None:
         return jsonify({"error": "Not found"}), 404
     db.session.delete(reg)

@@ -133,7 +133,7 @@ ruff.toml           # Ruff linter configuration (130 char line limit)
 ### Key Patterns
 
 1. **Model Queries**: Always query `Competitor.query` or `Coach.query` for new data. Use `.to_dict()` to serialize for templates/API.
-2. **School Resolution**: Use `_get_or_create_school(name)` helper to ensure FK constraint compliance.
+2. **School Resolution**: Use `School.get_or_create(name)` to ensure FK constraint compliance.
 3. **Response Format**: API endpoints return `{"data": [...]}` or `{"error": "msg"}` via `jsonify()`.
 4. **Template Context**: Routes pass model instances directly; templates use `.` notation and Jinja2 filters. No DynamoDB format wrappers.
 5. **Admin Protection**: Routes check `current_user` (Flask-Login) or JWT `role` claim; missing auth redirects to `/login`.
@@ -159,7 +159,7 @@ ruff.toml           # Ruff linter configuration (130 char line limit)
 
 ### Recent Refactoring (Apr–May 2026)
 - **Completed**: Separated `registrations` table into `schools`, `competitors`, `coaches`. `Registration` ORM model removed; `registrations` table kept as a read-only DB archive.
-- **Helper Functions**: Use `_get_or_create_school()` before creating competitors/coaches to ensure FK constraints are met.
+- **Helper Functions**: Use `School.get_or_create(name)` before creating competitors/coaches to ensure FK constraints are met.
 - **Coach Linking**: Coach matching complete. `scripts/fuzzy_match_coaches.py` was a one-shot migration script and has been deleted.
 - **Template Updates**: All templates updated to use native Python dict format (no DynamoDB `.S`/`.N` suffix wrappers).
 

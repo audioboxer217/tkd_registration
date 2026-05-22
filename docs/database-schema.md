@@ -26,7 +26,7 @@ Reference table for schools/clubs. Used as a foreign key by both coaches and com
 from models import School, Competitor
 
 # Create or fetch school (recommended pattern)
-school = _get_or_create_school("Dragon Dojo")
+school, _ = School.get_or_create("Dragon Dojo")
 
 # Query schools
 all_schools = School.query.all()
@@ -93,7 +93,7 @@ coaches = Coach.query.filter_by(school_id=1).all()
 coach = Coach.query.filter_by(email="john@dojo.com").first()
 
 # Create coach (use helper to ensure school exists)
-school = _get_or_create_school("Dragon Dojo")
+school, _ = School.get_or_create("Dragon Dojo")
 coach = Coach(
     full_name="Sensei John",
     email="john@dojo.com",
@@ -196,7 +196,7 @@ competitors = Competitor.query.filter_by(school_id=1).all()
 competitor = Competitor.query.filter_by(email="jane@example.com").first()
 
 # Create competitor (use helper to ensure school exists)
-school = _get_or_create_school("Dragon Dojo")
+school, _ = School.get_or_create("Dragon Dojo")
 coach = _get_or_create_coach("Sensei John", "john@dojo.com", school.id)
 
 competitor = Competitor(
@@ -296,9 +296,9 @@ See [`migration-status.md`](migration-status.md) for detailed context on the ong
 ### Foreign Key Constraint Violations
 **Problem**: `IntegrityError: (psycopg.errors.ForeignKeyViolation) ... school_id ...`
 
-**Solution**: Use `_get_or_create_school(name)` before creating competitors/coaches:
+**Solution**: Use `School.get_or_create(name)` before creating competitors/coaches:
 ```python
-school = _get_or_create_school("Dragon Dojo")
+school, _ = School.get_or_create("Dragon Dojo")
 competitor = Competitor(school_id=school.id, ...)  # Now safe
 ```
 

@@ -41,7 +41,7 @@ docs/               Reference documentation (see below)
 ## Key Patterns
 
 - Always call `.to_dict()` on models before passing to templates/API
-- Use `_get_or_create_school(name)` helper before creating competitors/coaches (FK safety)
+- Use `School.get_or_create(name)` before creating competitors/coaches (FK safety)
 - Style: PEP 8 via ruff (130 char max), domain-specific names (`competitor` not `reg`), env vars only (no hardcoded secrets)
 - HTMX routes return HTML not JSON
 
