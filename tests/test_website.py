@@ -109,6 +109,16 @@ def get_or_create_test_school(name):
         return school.id
 
 
+def api_auth_headers():
+    """Return Authorization headers for API endpoints that require JWT auth."""
+    return {"Authorization": "Bearer test_token"}
+
+
+def api_mock_jwt():
+    """Return a context manager that mocks jwt.decode to return an admin payload."""
+    return patch("jwt.decode", return_value={"app_metadata": {"role": "admin"}})
+
+
 class TestHomepage:
     client = app.test_client()
 
@@ -260,14 +270,26 @@ class TestEntriesPage:
 class TestEntriesAPI:
     client = app.test_client()
 
+    def test_entries_api_requires_auth(self):
+        response = self.client.get("/api/v1/entries")
+        assert response.status_code == 401
+
     def test_response_code(self):
-        with patch("api.set_weight_class", return_value=[]):
-            response = self.client.get("/api/v1/entries")
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", return_value=[]),
+        ):
+            response = self.client.get("/api/v1/entries", headers=api_auth_headers())
         assert response.status_code == 200
 
     def test_returns_json(self):
-        with patch("api.set_weight_class", return_value=[]):
-            response = self.client.get("/api/v1/entries")
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", return_value=[]),
+        ):
+            response = self.client.get("/api/v1/entries", headers=api_auth_headers())
         data = json.loads(response.data)
         assert "data" in data
 
@@ -296,8 +318,12 @@ class TestEntriesAPI:
             c_id = competitor.id
             co_id = coach.id
 
-        with patch("api.set_weight_class", return_value=[{"id": c_id, "full_name": "Jane Doe", "reg_type": "competitor"}]):
-            response = self.client.get("/api/v1/entries")
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", return_value=[{"id": c_id, "full_name": "Jane Doe", "reg_type": "competitor"}]),
+        ):
+            response = self.client.get("/api/v1/entries", headers=api_auth_headers())
         data = json.loads(response.data)
         entries = data["data"]
         assert any(entry.get("id") == c_id and entry.get("reg_type") == "competitor" for entry in entries)
@@ -393,8 +419,12 @@ class TestEntriesAPI:
             complete_id = complete.id
             pending_id = pending.id
 
-        with patch("api.set_weight_class", side_effect=lambda entries, _: entries):
-            response = self.client.get("/api/v1/entries?status=complete")
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", side_effect=lambda entries, _: entries),
+        ):
+            response = self.client.get("/api/v1/entries?status=complete", headers=api_auth_headers())
         data = json.loads(response.data)
         entries = data["data"]
         result_ids = [e.get("id") for e in entries if e.get("reg_type") == "competitor"]
@@ -406,10 +436,10 @@ class TestEntryCreateAPI:
     client = app.test_client()
 
     def _auth_headers(self):
-        return {"Authorization": "Bearer test_token"}
+        return api_auth_headers()
 
     def _mock_jwt(self):
-        return patch("jwt.decode", return_value={"app_metadata": {"role": "admin"}})
+        return api_mock_jwt()
 
     def test_create_entry_requires_auth(self):
         response = self.client.post("/api/v1/entries", json={"reg_type": "competitor"})
@@ -2028,14 +2058,10 @@ class TestAdminEntriesAPI:
     client = app.test_client()
 
     def _auth_headers(self):
-        return {"Authorization": "Bearer test_token"}
+        return api_auth_headers()
 
     def _mock_jwt(self):
-        """Patch jwt.decode to return an admin payload for the duration of a with-block."""
-        return patch(
-            "jwt.decode",
-            return_value={"app_metadata": {"role": "admin"}},
-        )
+        return api_mock_jwt()
 
     def test_admin_list_entries_requires_auth(self):
         response = self.client.get("/api/v1/admin/entries")
