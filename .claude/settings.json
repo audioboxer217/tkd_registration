@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run ruff check *)",
+      "Bash(set -a && source .env && set +a && uv run ruff check *)",
+      "Bash(set -a && source .env && set +a && uv run pytest *)",
+      "mcp__github__get_file_contents"
+    ]
+  }
+}
