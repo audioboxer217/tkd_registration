@@ -28,7 +28,7 @@ from supabase import Client, create_client
 from zoneinfo import ZoneInfo
 
 from api import api_bp, send_admin_alert, send_admin_school_alert
-from models import Coach, Competitor, School, age_group_for, create_entry, db, entry_exists, init_db
+from models import Coach, Competitor, School, age_group_for, create_entry, db, entry_exists, find_entry_by_id, init_db
 
 ui_bp = Blueprint("ui", __name__)
 
@@ -996,12 +996,7 @@ def add_entry():
 @login_required
 def edit_entry_form():
     reg_id = request.args.get("pk")
-
-    # Try competitor first
-    reg = db.session.get(Competitor, int(reg_id))
-    if reg is None:
-        # Try coach
-        reg = db.session.get(Coach, int(reg_id))
+    reg = find_entry_by_id(reg_id, reg_type=request.args.get("type"))
     if reg is None:
         abort(404)
 
@@ -1030,11 +1025,10 @@ def edit_entry_form():
 @login_required
 def edit_entry():
     config = _current_app_config()
-    reg_id = int(request.args.get("pk"))
+    reg_id = request.args.get("pk")
+    reg = find_entry_by_id(reg_id, reg_type=request.args.get("type"))
 
-    # Try competitor first
-    reg = db.session.get(Competitor, reg_id)
-    if reg:
+    if isinstance(reg, Competitor):
         school_name = request.form.get("school")
         school, _ = School.get_or_create(school_name)
         if not school:
@@ -1074,9 +1068,7 @@ def edit_entry():
         flash(f"{reg.full_name} updated successfully!", "success")
         return redirect(f'{config["URL"]}/admin', code=303)
 
-    # Try coach
-    reg = db.session.get(Coach, reg_id)
-    if reg:
+    elif isinstance(reg, Coach):
         school_name = request.form.get("school")
         school, _ = School.get_or_create(school_name)
         if not school:
@@ -1091,7 +1083,8 @@ def edit_entry():
         flash(f"{reg.full_name} updated successfully!", "success")
         return redirect(f'{config["URL"]}/admin', code=303)
 
-    abort(404)
+    else:
+        abort(404)
 
 
 @ui_bp.route("/export")

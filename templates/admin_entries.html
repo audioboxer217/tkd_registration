@@ -84,7 +84,7 @@
                     searchable: false,
                     render: {
                         _: function (data, type, row) {
-                            return '<a class="btn {{ button_style }}" href="/edit_entry?pk=' + data + '" role="button">Edit</a>';
+                            return '<a class="btn {{ button_style }}" href="/edit_entry?pk=' + data + '&type=' + row.reg_type + '" role="button">Edit</a>';
                         }
                     }
 

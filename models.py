@@ -251,15 +251,20 @@ def entry_exists(full_name: str, school_id: int, reg_type: str) -> bool:
     return model.query.filter_by(full_name=full_name, school_id=school_id).first() is not None
 
 
-def find_entry_by_id(entry_id) -> "Competitor | Coach | None":
+def find_entry_by_id(entry_id, reg_type: str | None = None) -> "Competitor | Coach | None":
     """Look up a registration by integer ID from Competitor or Coach tables.
 
     Accepts int or string; returns None if the ID is non-numeric or not found.
+    Pass reg_type='competitor' or 'coach' to avoid ambiguity when IDs overlap.
     """
     try:
         reg_id = int(entry_id)
     except (ValueError, TypeError):
         return None
+    if reg_type == "competitor":
+        return db.session.get(Competitor, reg_id)
+    if reg_type == "coach":
+        return db.session.get(Coach, reg_id)
     reg = db.session.get(Competitor, reg_id)
     if reg is not None:
         return reg
