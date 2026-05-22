@@ -74,7 +74,6 @@ class EntryStatusOut(Schema):
 
 class EntryStatusData(Schema):
     id = String()
-    full_name = String()
     reg_type = String()
     checkout_session_id = String(allow_none=True)
     status = String(allow_none=True)
@@ -589,7 +588,6 @@ def get_entry_status(entry_id):
         {
             "data": {
                 "id": str(reg.id),
-                "full_name": reg.full_name,
                 "reg_type": reg_type,
                 "checkout_session_id": getattr(reg, "checkout_session_id", None),
                 "status": getattr(reg, "status", None),
