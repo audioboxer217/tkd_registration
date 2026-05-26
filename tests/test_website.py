@@ -270,9 +270,36 @@ class TestEntriesPage:
 class TestEntriesAPI:
     client = app.test_client()
 
-    def test_entries_api_requires_auth(self):
-        response = self.client.get("/api/v1/entries")
-        assert response.status_code == 401
+    def test_entries_api_is_public(self):
+        with patch("api.set_weight_class", return_value=[]):
+            response = self.client.get("/api/v1/entries")
+        assert response.status_code == 200
+
+    def test_entries_api_strips_private_fields(self):
+        from models import Competitor
+        from models import db as _db
+
+        school_id = get_or_create_test_school("Private Fields School")
+        with app.app_context():
+            c = Competitor(
+                full_name="Private Test",
+                email="private@example.com",
+                phone="555-0000",
+                school_id=school_id,
+                age=20,
+                gender="M",
+                status="complete",
+            )
+            _db.session.add(c)
+            _db.session.commit()
+
+        with patch("api.set_weight_class", side_effect=lambda entries, _: entries):
+            response = self.client.get("/api/v1/entries")
+        data = json.loads(response.data)
+        entry = next((e for e in data["data"] if e.get("full_name") == "Private Test"), None)
+        assert entry is not None
+        for field in ("email", "phone", "status", "checkout_session_id", "payment_intent"):
+            assert field not in entry, f"Private field '{field}' should not be in public response"
 
     def test_response_code(self):
         with (

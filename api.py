@@ -522,12 +522,21 @@ def stripe_webhook():
     return jsonify({"status": "ok"}), 200
 
 
+_PRIVATE_ENTRY_FIELDS = frozenset({
+    "email", "phone", "parent", "birthdate",
+    "medical_contacts", "medical_conditions", "allergies", "medications",
+    "checkout_session_id", "payment_intent", "status",
+})
+
+
+def _public_entry(d: dict) -> dict:
+    return {k: v for k, v in d.items() if k not in _PRIVATE_ENTRY_FIELDS}
+
+
 @api_bp.route("/entries", methods=["GET"])
-@api_bp.doc(security=[{"BearerAuth": []}], responses={401: _err("Unauthorized")})
-@api_auth_required
-@api_bp.output(EntryListOut, description="All competitor and coach entries")
+@api_bp.output(EntryListOut, description="Public list of competitor and coach entries (non-sensitive fields only)")
 def entries_api():
-    """Return all competitor and coach entries as JSON.
+    """Return public competitor and coach entries as JSON (no PII).
 
     Query Parameters:
         status: Optional payment status filter (e.g. ``complete``, ``pending``,
@@ -539,10 +548,10 @@ def entries_api():
     competitors = Competitor.eligible(status=status_filter)
     coaches = Coach.query.all()
 
-    competitor_dicts = [c.to_dict() for c in competitors]
+    competitor_dicts = [_public_entry(c.to_dict()) for c in competitors]
     competitor_dicts = set_weight_class(competitor_dicts, config_bucket)
 
-    coach_dicts = [c.to_dict() for c in coaches]
+    coach_dicts = [_public_entry(c.to_dict()) for c in coaches]
 
     return jsonify({"data": competitor_dicts + coach_dicts})
 

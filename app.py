@@ -17,6 +17,7 @@ from flask import (
     current_app,
     flash,
     g,
+    jsonify,
     redirect,
     render_template,
     render_template_string,
@@ -862,6 +863,17 @@ def schools_page():
     if request.headers.get("HX-Request"):
         return render_template("api/schools.html", schools=schools_list, button_style=os.getenv("BUTTON_STYLE", "btn-primary"))
     return render_base("api/schools.html", schools=schools_list)
+
+
+@ui_bp.route("/admin/entries-data", methods=["GET"])
+@login_required
+def admin_entries_data():
+    """Session-authenticated JSON endpoint for the admin DataTables."""
+    competitors = Competitor.query.order_by(Competitor.created_at.desc()).all()
+    coaches = Coach.query.order_by(Coach.created_at.desc()).all()
+    results = [c.to_dict() for c in competitors] + [c.to_dict() for c in coaches]
+    results.sort(key=lambda x: x["created_at"], reverse=True)
+    return jsonify({"data": results})
 
 
 @ui_bp.route("/admin", methods=["GET"])
