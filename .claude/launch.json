@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Flask Dev Server",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "flask", "--app", "app", "--debug", "run", "--port", "5001"],
+      "port": 5001
+    },
+    {
+      "name": "Stripe Listener",
+      "runtimeExecutable": "stripe",
+      "runtimeArgs": ["listen", "--forward-to", "localhost:5001/api/v1/webhooks/stripe"],
+      "port": 5002
+    }
+  ]
+}
