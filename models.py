@@ -242,7 +242,7 @@ _AGE_GROUP_MAP: dict[int, str] = {
 }
 
 
-def age_group_for(age) -> str:
+def age_group_for(age: int | str) -> str:
     """Map an integer age to its competition age-group name."""
     return _AGE_GROUP_MAP.get(int(age), "too_old")
 
