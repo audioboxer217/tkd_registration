@@ -1117,6 +1117,11 @@ class TestNameValidation:
         assert response.status_code == 200
         assert b"is-invalid" in response.data
 
+    def test_invalid_name_spaces_and_hyphens_only(self):
+        response = self.client.post("/api/validate/name/fname", data={"fname": "- -"})
+        assert response.status_code == 200
+        assert b"is-invalid" in response.data
+
 
 class TestNumberValidation:
     client = app.test_client()
