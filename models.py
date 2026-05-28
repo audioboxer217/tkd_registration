@@ -230,19 +230,21 @@ class Competitor(db.Model):
 # ---------------------------------------------------------------------------
 
 
+_AGE_GROUP_MAP: dict[int, str] = {
+    **{a: "too_young" for a in range(0, 4)},
+    **{a: "dragon"    for a in [4, 5, 6, 7]},
+    **{a: "tiger"     for a in [8, 9]},
+    **{a: "youth"     for a in [10, 11]},
+    **{a: "cadet"     for a in [12, 13, 14]},
+    **{a: "junior"    for a in [15, 16]},
+    **{a: "senior"    for a in range(17, 33)},
+    **{a: "ultra"     for a in range(33, 100)},
+}
+
+
 def age_group_for(age) -> str:
     """Map an integer age to its competition age-group name."""
-    age_groups = {
-        "too_young": list(range(0, 4)),
-        "dragon": [4, 5, 6, 7],
-        "tiger": [8, 9],
-        "youth": [10, 11],
-        "cadet": [12, 13, 14],
-        "junior": [15, 16],
-        "senior": list(range(17, 33)),
-        "ultra": list(range(33, 100)),
-    }
-    return next((group for group, ages in age_groups.items() if int(age) in ages), "too_old")
+    return _AGE_GROUP_MAP.get(int(age), "too_old")
 
 
 def entry_exists(full_name: str, school_id: int, reg_type: str) -> bool:
