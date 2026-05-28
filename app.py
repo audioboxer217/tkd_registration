@@ -693,7 +693,8 @@ def autofill():
 def api_validate_name(form_item_name):
     form_item = request.form.get(form_item_name)
     form_item_id = request.args.get("id", form_item_name)
-    form_item_valid = bool(form_item) and form_item.replace(" ", "").isalpha()
+    stripped = form_item.replace(" ", "").replace("-", "") if form_item else ""
+    form_item_valid = bool(form_item) and bool(stripped) and stripped.isalpha()
     return render_template(
         "validation/name.html",
         form_item=form_item,
