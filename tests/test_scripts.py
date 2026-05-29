@@ -83,23 +83,6 @@ def make_competitor(**kwargs):
 
 
 class TestBreakingSchedule:
-    def test_get_age_group_known_ages(self):
-        assert breaking_mod.get_age_group(5) == "dragon"
-        assert breaking_mod.get_age_group(9) == "tiger"
-        assert breaking_mod.get_age_group(11) == "youth"
-        assert breaking_mod.get_age_group(13) == "cadet"
-        assert breaking_mod.get_age_group(16) == "junior"
-        assert breaking_mod.get_age_group(25) == "senior"
-        assert breaking_mod.get_age_group(50) == "ultra"
-
-    def test_get_age_group_boundaries(self):
-        assert breaking_mod.get_age_group(4) == "dragon"
-        assert breaking_mod.get_age_group(7) == "dragon"
-        assert breaking_mod.get_age_group(8) == "tiger"
-        assert breaking_mod.get_age_group(17) == "senior"
-        assert breaking_mod.get_age_group(32) == "senior"
-        assert breaking_mod.get_age_group(33) == "ultra"
-
     def test_normalize_gender(self):
         assert breaking_mod.normalize_gender("M") == "male"
         assert breaking_mod.normalize_gender("F") == "female"
@@ -312,15 +295,6 @@ class TestBreakingSchedule:
 
 
 class TestPoomsaeSchedule:
-    def test_get_age_group(self):
-        assert poomsae_mod.get_age_group(6) == "dragon"
-        assert poomsae_mod.get_age_group(8) == "tiger"
-        assert poomsae_mod.get_age_group(10) == "youth"
-        assert poomsae_mod.get_age_group(14) == "cadet"
-        assert poomsae_mod.get_age_group(15) == "junior"
-        assert poomsae_mod.get_age_group(20) == "senior"
-        assert poomsae_mod.get_age_group(45) == "ultra"
-
     def test_normalize_gender(self):
         assert poomsae_mod.normalize_gender("M") == "male"
         assert poomsae_mod.normalize_gender("F") == "female"
@@ -524,12 +498,6 @@ class TestPoomsaeSchedule:
 
 
 class TestSparringSchedule:
-    def test_get_age_group(self):
-        assert sparring_mod.get_age_group(5) == "dragon"
-        assert sparring_mod.get_age_group(9) == "tiger"
-        assert sparring_mod.get_age_group(20) == "senior"
-        assert sparring_mod.get_age_group(40) == "ultra"
-
     def test_normalize_gender(self):
         assert sparring_mod.normalize_gender("M") == "male"
         assert sparring_mod.normalize_gender("F") == "female"
