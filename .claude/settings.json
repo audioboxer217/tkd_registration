@@ -4,7 +4,24 @@
       "Bash(uv run ruff check .)",
       "Bash(set -a && source .env && set +a && uv run ruff check .)",
       "Bash(set -a && source .env && set +a && uv run pytest *)",
-      "mcp__github__get_file_contents"
+      "mcp__github__get_file_contents",
+      "Bash(git commit *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git push *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "set -a && source .env && set +a && uv run pytest -q || true"
+          }
+        ]
+      }
     ]
   }
 }
