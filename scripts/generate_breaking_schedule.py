@@ -83,6 +83,9 @@ def parse_competitors(entries: list) -> list[BreakingCompetitor]:
         name = entry.full_name or "Unknown Competitor"
         belt_rank = normalize_belt_rank(entry.belt_rank or "")
         age_group = age_group_for(age)
+        if age_group not in AGE_GROUP_ORDER:
+            print(f"  ! Skipping {name} (age {age}): no valid competition age group")
+            continue
 
         competitors.append(
             BreakingCompetitor(
