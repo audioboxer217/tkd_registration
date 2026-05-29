@@ -8,7 +8,8 @@
       "Bash(git commit *)",
       "Bash(git fetch *)",
       "Bash(git pull *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Edit(.claude/settings.json)"
     ]
   },
   "hooks": {
@@ -18,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "set -a && source .env && set +a && uv run pytest -q || true"
+            "command": "set -a && source .env && set +a && uv run pytest -q && exit 0 || exit 2"
           }
         ]
       }
