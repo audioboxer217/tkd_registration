@@ -90,6 +90,9 @@ def parse_competitors(entries: list) -> list[SparringCompetitor]:
         school = entry.school.name if entry.school else "Unknown School"
         name = entry.full_name or "Unknown Competitor"
         age_group = age_group_for(age)
+        if age_group not in AGE_GROUP_ORDER:
+            print(f"  ! Skipping {name} (age {age}): no valid competition age group")
+            continue
 
         for division in divisions:
             competitors.append(

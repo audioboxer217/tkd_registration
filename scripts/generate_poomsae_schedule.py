@@ -109,8 +109,11 @@ def parse_competitors(entries: list) -> list[PoomsaeCompetitor]:
             continue
 
         age = int(entry.age or 0)
-        age_group = age_group_for(age)
         name = entry.full_name or "Unknown Competitor"
+        age_group = age_group_for(age)
+        if age_group not in AGE_GROUP_ORDER:
+            print(f"  ! Skipping {name} (age {age}): no valid competition age group")
+            continue
         school = entry.school.name if entry.school else "Unknown School"
         gender = normalize_gender(entry.gender or "")
         belt = normalize_belt(entry.belt_rank or "")

@@ -178,6 +178,18 @@ class TestBreakingSchedule:
     def test_parse_competitors_empty(self):
         assert breaking_mod.parse_competitors([]) == []
 
+    def test_parse_competitors_skips_out_of_range_age(self):
+        # A missing/blank age resolves to 0, which maps to a non-bucket
+        # sentinel; such entries must be dropped, not crash bucketing.
+        entries = [
+            make_competitor(full_name="NoAge", events="breaking", age=None, gender="F"),
+            make_competitor(full_name="Valid", events="breaking", age=12, gender="F"),
+        ]
+        competitors = breaking_mod.parse_competitors(entries)
+        assert [c.name for c in competitors] == ["Valid"]
+        # generate_groups buckets only by AGE_GROUP_ORDER keys; should not raise.
+        assert breaking_mod.generate_groups(competitors)
+
     def test_generate_groups_structure(self):
         entries = [
             make_competitor(
@@ -382,6 +394,18 @@ class TestPoomsaeSchedule:
         entry = make_competitor(events="sparring")
         assert poomsae_mod.parse_competitors([entry]) == []
 
+    def test_parse_competitors_skips_out_of_range_age(self):
+        # A missing/blank age resolves to 0, which maps to a non-bucket
+        # sentinel; such entries must be dropped, not crash bucketing.
+        entries = [
+            make_competitor(full_name="NoAge", events="poomsae", age=None, gender="F"),
+            make_competitor(full_name="Valid", events="poomsae", age=12, gender="F"),
+        ]
+        competitors = poomsae_mod.parse_competitors(entries)
+        assert [c.name for c in competitors] == ["Valid"]
+        # build_age_buckets indexes only by AGE_GROUP_ORDER keys; should not raise.
+        assert poomsae_mod.build_age_buckets(competitors)
+
     def test_parse_competitors_field_mapping(self):
         entry = make_competitor(
             full_name="Bob",
@@ -547,6 +571,18 @@ class TestSparringSchedule:
     def test_parse_competitors_no_sparring(self):
         entry = make_competitor(events="poomsae")
         assert sparring_mod.parse_competitors([entry]) == []
+
+    def test_parse_competitors_skips_out_of_range_age(self):
+        # A missing/blank age resolves to 0, which maps to a non-bucket
+        # sentinel; such entries must be dropped, not crash bucketing.
+        entries = [
+            make_competitor(full_name="NoAge", events="sparring", age=None, gender="F"),
+            make_competitor(full_name="Valid", events="sparring", age=12, gender="F"),
+        ]
+        competitors = sparring_mod.parse_competitors(entries)
+        assert [c.name for c in competitors] == ["Valid"]
+        # build_age_buckets indexes only by AGE_GROUP_ORDER keys; should not raise.
+        assert sparring_mod.build_age_buckets(competitors)
 
     def test_parse_competitors_field_mapping(self):
         entry = make_competitor(
