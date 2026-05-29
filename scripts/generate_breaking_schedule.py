@@ -15,18 +15,9 @@ except ModuleNotFoundError:  # Allows `python scripts/generate_breaking_schedule
 add_repo_root_to_path()
 
 from app import app  # noqa: E402
-from models import Competitor  # noqa: E402
+from models import Competitor, age_group_for  # noqa: E402
 
 AGE_GROUP_ORDER = ["dragon", "tiger", "youth", "cadet", "junior", "senior", "ultra"]
-AGE_GROUPS = {
-    "dragon": [4, 5, 6, 7],
-    "tiger": [8, 9],
-    "youth": [10, 11],
-    "cadet": [12, 13, 14],
-    "junior": [15, 16],
-    "senior": list(range(17, 33)),
-    "ultra": list(range(33, 100)),
-}
 
 BELT_ORDER = ["white", "yellow", "orange", "green", "blue", "red", "brown", "black"]
 
@@ -53,10 +44,6 @@ class Group:
 def get_entries():
     """Query all paid (complete) competitors from the database."""
     return Competitor.eligible(status="complete")
-
-
-def get_age_group(age: int) -> str:
-    return next((group for group, ages in AGE_GROUPS.items() if age in ages), "ultra")
 
 
 def normalize_gender(gender: str) -> str:
@@ -95,7 +82,7 @@ def parse_competitors(entries: list) -> list[BreakingCompetitor]:
         school = entry.school.name if entry.school else "Unknown School"
         name = entry.full_name or "Unknown Competitor"
         belt_rank = normalize_belt_rank(entry.belt_rank or "")
-        age_group = get_age_group(age)
+        age_group = age_group_for(age)
 
         competitors.append(
             BreakingCompetitor(
