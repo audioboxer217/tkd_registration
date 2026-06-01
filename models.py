@@ -42,12 +42,12 @@ class School(db.Model):
         if school is not None:
             return school, False
         school = cls(name=name)
-        db.session.add(school)
         try:
-            db.session.flush()
+            with db.session.begin_nested():
+                db.session.add(school)
+                db.session.flush([school])  # scope flush to school so savepoint rollback can't undo other pending objects
             return school, True
         except IntegrityError:
-            db.session.rollback()
             return cls.query.filter_by(name=name).first(), False
 
     @classmethod
