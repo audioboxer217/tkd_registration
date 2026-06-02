@@ -301,6 +301,25 @@ class TestEntriesAPI:
         for field in ("email", "phone", "status", "checkout_session_id", "payment_intent"):
             assert field not in entry, f"Private field '{field}' should not be in public response"
 
+    def test_response_code(self):
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", return_value=[]),
+        ):
+            response = self.client.get("/api/v1/entries", headers=api_auth_headers())
+        assert response.status_code == 200
+
+    def test_returns_json(self):
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", return_value=[]),
+        ):
+            response = self.client.get("/api/v1/entries", headers=api_auth_headers())
+        data = json.loads(response.data)
+        assert "data" in data
+
     def test_returns_competitor_and_coach_entries(self):
         from models import Coach, Competitor
         from models import db as _db
@@ -326,8 +345,12 @@ class TestEntriesAPI:
             c_id = competitor.id
             co_id = coach.id
 
-        with patch("api.set_weight_class", return_value=[{"id": c_id, "full_name": "Jane Doe", "reg_type": "competitor"}]):
-            response = self.client.get("/api/v1/entries")
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", return_value=[{"id": c_id, "full_name": "Jane Doe", "reg_type": "competitor"}]),
+        ):
+            response = self.client.get("/api/v1/entries", headers=api_auth_headers())
         data = json.loads(response.data)
         entries = data["data"]
         assert any(entry.get("id") == c_id and entry.get("reg_type") == "competitor" for entry in entries)
@@ -423,8 +446,12 @@ class TestEntriesAPI:
             complete_id = complete.id
             pending_id = pending.id
 
-        with patch("api.set_weight_class", side_effect=lambda entries, _: entries):
-            response = self.client.get("/api/v1/entries?status=complete")
+        with (
+            patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "test_secret"}),
+            api_mock_jwt(),
+            patch("api.set_weight_class", side_effect=lambda entries, _: entries),
+        ):
+            response = self.client.get("/api/v1/entries?status=complete", headers=api_auth_headers())
         data = json.loads(response.data)
         entries = data["data"]
         result_ids = [e.get("id") for e in entries if e.get("reg_type") == "competitor"]
