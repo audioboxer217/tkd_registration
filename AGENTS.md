@@ -14,6 +14,8 @@ uv run ruff check .                # Lint (130 char line limit)
 
 > **Environment variables are always in `.env`** at the project root. Always source it before running the app or tests: `set -a && source .env && set +a`
 
+**Use codegraph tools for faster exploration.** - Details can be found in [CodeGraph](docs/codegraph.md)
+
 ## Project Layout
 
 ```

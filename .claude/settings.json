@@ -9,7 +9,14 @@
       "Bash(git fetch *)",
       "Bash(git pull *)",
       "Bash(git push *)",
-      "Edit(.claude/settings.json)"
+      "Edit(.claude/settings.json)",
+      "mcp__codegraph__codegraph_search",
+      "mcp__codegraph__codegraph_context",
+      "mcp__codegraph__codegraph_callers",
+      "mcp__codegraph__codegraph_callees",
+      "mcp__codegraph__codegraph_impact",
+      "mcp__codegraph__codegraph_node",
+      "mcp__codegraph__codegraph_status"
     ]
   },
   "hooks": {
@@ -20,6 +27,27 @@
           {
             "type": "command",
             "command": "set -a && source .env && set +a && uv run pytest -q && exit 0 || exit 2"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "codegraph mark-dirty",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "codegraph sync-if-dirty"
           }
         ]
       }
