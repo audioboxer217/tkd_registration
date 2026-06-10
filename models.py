@@ -48,6 +48,8 @@ class School(db.Model):
                 db.session.flush([school])  # scope flush to school so savepoint rollback can't undo other pending objects
             return school, True
         except IntegrityError:
+            # Another request created the school concurrently; treat as pre-existing so the
+            # first caller's new-school alert is not duplicated.
             return cls.query.filter_by(name=name).first(), False
 
     @classmethod
@@ -338,6 +340,8 @@ def create_entry(body: dict) -> tuple:
 
     db.session.add(reg)
     db.session.flush()
+    # is_new is False both for pre-existing schools and for the losing side of a concurrent
+    # insert (IntegrityError path in get_or_create); in either case, skip the alert.
     return reg, None, None, school.name if is_new else None
 
 
