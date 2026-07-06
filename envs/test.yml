@@ -6,7 +6,7 @@ okgp:
   aws_region: us-east-1
   profile_name: personal
   project_name: frontend
-  runtime: python3.11
+  runtime: python3.13
   s3_bucket: zappa-okgp-frontend-dev
   http_methods:
     - GET
@@ -23,7 +23,7 @@ okcc:
   aws_region: us-east-1
   profile_name: personal
   project_name: frontend
-  runtime: python3.11
+  runtime: python3.13
   s3_bucket: zappa-okc-chmp-frontend-dev
   http_methods:
     - GET

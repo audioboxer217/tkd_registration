@@ -6,7 +6,7 @@ This is the **Frontend** of the TKD Registration Project — a Flask-based web a
 
 ## Tech Stack
 
-- **Language**: Python 3.11+
+- **Language**: Python 3.13+
 - **Web Framework**: Flask 3.1.0
 - **ORM**: SQLAlchemy 3.1+ with Flask-SQLAlchemy
 - **Database**: Supabase (PostgreSQL) with Alembic migrations
