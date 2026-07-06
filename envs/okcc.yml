@@ -6,7 +6,7 @@ prod:
   aws_region: us-east-1
   profile_name: gtma
   project_name: frontend
-  runtime: python3.11
+  runtime: python3.13
   s3_bucket: zappa-okc-chmp-frontend-prod
   http_methods:
     - GET

@@ -75,7 +75,7 @@ graph TB
 - Create a [Supabase](https://supabase.com) project (for Postgres DB and Auth)
 - Deploy base infrastructure using the [tkd-registration](https://github.com/audioboxer217/terraform-kseppler-tkd-registration) Terraform Module. This must be done **first**.
 - Deploy the [Backend](https://github.com/audioboxer217/tkd-registration-backend). This can be done before or after.
-- Python 3.11+
+- Python 3.13+
 - [uv](https://github.com/astral-sh/uv) package manager
 
 ## Project Structure

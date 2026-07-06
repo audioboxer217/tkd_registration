@@ -1,6 +1,6 @@
 # CLAUDE.md — TKD Registration Frontend
 
-Flask 3.1 + SQLAlchemy 3.1 + Supabase (PostgreSQL) + Pytest + Zappa (Lambda). Python 3.11+ via `uv`.
+Flask 3.1 + SQLAlchemy 3.1 + Supabase (PostgreSQL) + Pytest + Zappa (Lambda). Python 3.13+ via `uv`.
 
 ## Quick Start
 
