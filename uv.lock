@@ -498,18 +498,6 @@ wheels = [
 ]
 
 [[package]]
-name = "kappa"
-version = "0.6.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "boto3" },
-    { name = "click" },
-    { name = "placebo" },
-    { name = "pyyaml" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/fa/1b8328d2199520ef5a257f8a2e9315ed0b0194e353a152ca1959490dfbc8/kappa-0.6.0.tar.gz", hash = "sha256:4b5b372872f25d619e427e04282551048dc975a107385b076b3ffc6406a15833", size = 29680, upload-time = "2016-08-03T18:02:30.132Z" }
-
-[[package]]
 name = "markdown-it-py"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1494,7 +1482,7 @@ dev = [
     { name = "python-dotenv", specifier = "~=1.0.0" },
     { name = "ruff", specifier = "~=0.6.5" },
     { name = "setuptools", specifier = "==74.1.2" },
-    { name = "zappa", specifier = ">=0.59.0" },
+    { name = "zappa", specifier = ">=0.62.1" },
 ]
 
 [[package]]
@@ -1711,7 +1699,7 @@ wheels = [
 
 [[package]]
 name = "zappa"
-version = "0.59.0"
+version = "0.62.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "argcomplete" },
@@ -1719,22 +1707,22 @@ dependencies = [
     { name = "durationpy" },
     { name = "hjson" },
     { name = "jmespath" },
-    { name = "kappa" },
     { name = "pip" },
     { name = "placebo" },
     { name = "python-dateutil" },
     { name = "python-slugify" },
     { name = "pyyaml" },
     { name = "requests" },
+    { name = "setuptools" },
     { name = "toml" },
     { name = "tqdm" },
     { name = "troposphere" },
     { name = "werkzeug" },
     { name = "wheel" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/72/a8/a29c409fe23bbb187c329c409fb7f96b63747f8af6b895192a95d8a9bf42/zappa-0.59.0.tar.gz", hash = "sha256:239c25eb949cadafc6dc2efe94230191d3e99c1bf437529d99bb933ff409d55e", size = 204546, upload-time = "2024-04-10T20:45:41.903Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/9d/c526eb8053ab25524daf0aa060b413c465a526f0d142443178e87bddc7ae/zappa-0.62.1.tar.gz", hash = "sha256:e4c46ba64beff0a6397b3fa0e5b6cdbd2e33b5a067dbd11dd3a71895ec4260c2", size = 266165, upload-time = "2026-03-11T00:42:27.015Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/d3/dc0e154e572c810b4354a8aab7c2d0471f8718009f81001046fb420c271d/zappa-0.59.0-py3-none-any.whl", hash = "sha256:4f5f2459ce0acb72a9aa2241ce0aa48661d651196055738769017eaad8422017", size = 118479, upload-time = "2024-04-10T20:45:38.812Z" },
+    { url = "https://files.pythonhosted.org/packages/46/e0/f67bc1a350dc2ba7cc07eaece4e7b218c4801cf120ddfa46945b8b5df08c/zappa-0.62.1-py3-none-any.whl", hash = "sha256:eac794e3c0ad7ed32618ae03fd33d78d8f33fd2064c9d9f1f0a062140a3a56cb", size = 148430, upload-time = "2026-03-11T00:42:24.504Z" },
 ]
 
 [[package]]
